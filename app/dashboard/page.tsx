@@ -62,7 +62,7 @@ export default async function DashboardPage() {
         })}</div>
       </section>
       <section className="st-dashboard-pages"><div><p className="st-kicker st-kicker-light">{tr("صفحات الهبوط")}</p><h2>{tr("كل روابطك في صفحة واحدة.")}</h2><p>{pages.length ? tr("لديك {value0} صفحة. عدّل المحتوى، عاين، ثم انشر.", {value0: pages.length.toLocaleString(tr.numberLocale)}) : tr("أنشئ صفحة روابط للقطع التي تدعمها، ثم اربطها بقطعة أو أكثر.")}</p><Link className="st-button st-button-outline" href="/dashboard/pages">{tr("إدارة صفحاتك ←")}</Link></div><div className="st-dashboard-page-list">{pages.length ? pages.slice(0, 3).map((page) => <Link key={page.id} href={`/dashboard/pages/${page.id}`}><span>{page.display_name || tr("صفحة بدون اسم")}</span><small>{page.is_published ? tr("منشورة") : tr("مسودة")}</small></Link>) : <span>{tr("الصفحات الجديدة تظهر هنا بعد حفظها.")}</span>}</div></section>
-      <p className="st-dashboard-disclaimer">{tr("الفتحات ليست عدد أشخاص فريدين. QR وNFC يستخدمان الرابط نفسه؛ النقر لا يؤكد إتمام إجراء خارج CliQo.")}</p>
+      <p className="st-dashboard-disclaimer">{tr("الفتحات ليست عدد أشخاص فريدين. QR وNFC يستخدمان الرابط نفسه؛ النقر لا يؤكد إتمام إجراء خارج CliQo. الأرقام من سجل آخر 13 شهرًا.")}</p>
     </div>
   </main>;
 }

@@ -17,7 +17,7 @@ const periods = [
   { key: "24h", label: "آخر 24 ساعة", duration: 24 * 60 * 60 * 1000 },
   { key: "7d", label: "7 أيام", duration: 7 * 24 * 60 * 60 * 1000 },
   { key: "30d", label: "30 يوم", duration: 30 * 24 * 60 * 60 * 1000 },
-  { key: "all", label: "من البداية", duration: null },
+  { key: "all", label: "السجل المتاح", duration: null },
 ] as const;
 
 export default async function CustomerAnalyticsPage({
@@ -81,7 +81,7 @@ export default async function CustomerAnalyticsPage({
       </nav>
       <p className={styles.periodCaption}>{tr("الفترة:")} {tr(selectedPeriod.label)}</p>
       <div className={styles.metrics}><article><span>{tr("إجمالي مرات الفتح")}</span><strong>{totals.opens.toLocaleString(tr.numberLocale)}</strong></article><article><span>{tr("نقرات الأزرار")}</span><strong>{totals.clicks.toLocaleString(tr.numberLocale)}</strong></article><article><span>{tr("قطعك الذكية")}</span><strong>{items.length}</strong></article><article><span>{tr("صفحاتك")}</span><strong>{pages.length}</strong></article></div>
-      <p className={styles.note}>{tr("الفتحة مش شخصًا فريدًا؛ ممكن نفس الزائر يفتح أكتر من مرة. QR وNFC لنفس القطعة بيتحسبوا معًا. النقرات تقيس الضغط على الزر فقط، ولا تؤكد إتمام الدفع أو التقييم في التطبيق الخارجي.")}</p>
+      <p className={styles.note}>{tr("الفتحة مش شخصًا فريدًا؛ ممكن نفس الزائر يفتح أكتر من مرة. QR وNFC لنفس القطعة بيتحسبوا معًا. النقرات تقيس الضغط على الزر فقط، ولا تؤكد إتمام الدفع أو التقييم في التطبيق الخارجي. نحتفظ بسجل الإحصائيات 13 شهرًا.")}</p>
       <section className={styles.analyticsSection}><div className={styles.analyticsHeading}><h2>{tr("حسب القطعة")}</h2><Link href="/dashboard">{tr("إدارة القطع")}</Link></div>
         {items.length === 0 ? <p className={styles.emptyAnalytics}>{tr("فعّل قطعة عشان تبدأ تشوف الفتحات والنقرات هنا.")}</p> : <div className={styles.analyticsList}>{items.map((item) => {
           const metric = metricByItem.get(item.id);
