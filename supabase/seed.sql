@@ -1,0 +1,2 @@
+-- Product families and other stable reference data are seeded by migrations.
+-- Keep environment-specific demo/customer/order data out of shared local seeds.

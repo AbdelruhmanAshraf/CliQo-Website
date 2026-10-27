@@ -1,0 +1,346 @@
+.paymentPage,
+.unavailablePage {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background: var(--cream);
+  color: var(--green);
+}
+
+.paymentCard,
+.unavailableCard {
+  width: min(100%, 500px);
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-shell);
+  box-shadow: 0 18px 48px rgb(0 58 49 / 8%);
+}
+
+.accentBar {
+  height: 7px;
+  background: var(--orange);
+}
+
+.paymentContent {
+  display: grid;
+  gap: 18px;
+  padding: 30px clamp(20px, 6vw, 36px) 32px;
+}
+
+.brand {
+  width: fit-content;
+  color: var(--green);
+  font-family: var(--latin);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.brand img {
+  display: block;
+  width: 112px;
+  height: auto;
+}
+
+.paymentEyebrow,
+.merchantEyebrow {
+  margin: 0;
+  color: var(--green-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.paymentContent h1,
+.unavailableCard h1 {
+  margin: -10px 0 0;
+  color: var(--green);
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1.55;
+}
+
+.paymentIntro,
+.unavailableCard p {
+  margin: -8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.paymentDetails {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 0;
+  padding: 20px;
+  background: var(--cream);
+  border: 1px solid #f0e4d2;
+  border-radius: 18px;
+}
+
+.detailLabel {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.recipientName {
+  margin: -7px 0 8px;
+  color: var(--green);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.identifierRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: -5px;
+}
+
+.identifierValue {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--green);
+  font-family: var(--latin);
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: left;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.copyButton {
+  min-height: 46px;
+  flex: none;
+  padding: 8px 13px;
+  border: 1px solid var(--orange);
+  border-radius: 12px;
+  background: var(--green);
+  color: var(--cream);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.copyButton:hover {
+  background: var(--green-2);
+}
+
+.copyButton:focus-visible,
+.merchantLink:focus-visible,
+.brand:focus-visible,
+.merchantBack:focus-visible,
+.unavailableAction:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+.copyStatus {
+  min-height: 22px;
+  margin: -7px 0 0;
+  color: var(--green-2);
+  font-size: 13px;
+}
+
+.paymentWarning {
+  margin: 0;
+  padding: 14px 16px;
+  border-inline-start: 4px solid var(--orange);
+  border-radius: 12px;
+  background: var(--green);
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.paymentFooter {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.merchantPage {
+  width: min(100%, 560px);
+  min-height: 100svh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #f0f3f0;
+  color: var(--green);
+  box-shadow: 0 0 48px rgb(0 58 49 / 8%);
+}
+
+.merchantCover {
+  position: relative;
+  height: clamp(180px, 54vw, 240px);
+  overflow: hidden;
+  background-color: var(--green);
+  background-position: center;
+  background-size: cover;
+}
+
+.merchantCover::after {
+  position: absolute;
+  inset: auto -30px -84px auto;
+  width: 180px;
+  height: 180px;
+  border: 20px solid rgb(255 106 0 / 78%);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.merchantProfile {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  margin: -44px 16px 0;
+  padding: 0 20px 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--white);
+  text-align: center;
+}
+
+.avatarFrame {
+  position: relative;
+  display: grid;
+  width: 108px;
+  height: 108px;
+  place-items: center;
+  margin-top: -58px;
+  overflow: hidden;
+  border: 5px solid var(--white);
+  border-radius: 50%;
+  background: var(--cream);
+  box-shadow: 0 5px 20px rgb(0 58 49 / 14%);
+}
+
+.merchantAvatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  color: var(--green);
+  font-family: var(--latin);
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.merchantEyebrow {
+  margin-top: 12px;
+}
+
+.merchantProfile h1 {
+  margin: 3px 0 0;
+  color: var(--green);
+  font-size: clamp(23px, 6vw, 30px);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.merchantDescription {
+  max-width: 420px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.merchantLinks {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 24px;
+}
+
+.merchantLink {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #0b5347;
+  border-radius: 14px;
+  background: var(--green);
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: start;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.merchantLink:hover {
+  transform: translateY(-1px);
+  background: var(--green-2);
+}
+
+.linkArrow {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--cream);
+  color: var(--green);
+  font-family: var(--latin);
+  font-size: 17px;
+}
+
+.merchantBack {
+  margin-top: 24px;
+  color: var(--muted);
+  font-family: var(--latin);
+  font-size: 12px;
+}
+
+.unavailableCard {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  padding: 30px;
+}
+
+.unavailableAction {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  padding: 9px 16px;
+  border: 1px solid var(--orange);
+  border-radius: 12px;
+  background: var(--green);
+  color: var(--cream);
+  font-weight: 700;
+}
+
+@media (max-width: 380px) {
+  .identifierRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copyButton {
+    width: 100%;
+  }
+
+  .merchantLinks {
+    grid-template-columns: 1fr;
+  }
+
+  .unavailableCard {
+    padding: 24px 20px;
+  }
+}
