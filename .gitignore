@@ -3,6 +3,7 @@ node_modules/
 out/
 .env*
 !.env.example
+!deploy/app.env.example
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store

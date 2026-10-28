@@ -1,0 +1,12 @@
+.git
+.next
+.next-*
+node_modules
+.env*
+!.env.example
+deploy/app.env
+supabase/.temp
+supabase/.branches
+tmp
+*.tsbuildinfo
+.DS_Store

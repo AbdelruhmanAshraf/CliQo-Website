@@ -1,0 +1,25 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set the public Supabase API URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?Set the publishable key}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?Set the public website URL}
+        NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_AUTH_ENABLED:-false}
+    env_file: ${CLIQO_RUNTIME_ENV:-./app.env}
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    networks:
+      - supabase_private
+
+networks:
+  supabase_private:
+    external: true
+    name: ${CLIQO_SUPABASE_NETWORK:?Set the Docker network name of the self-hosted Supabase stack}
