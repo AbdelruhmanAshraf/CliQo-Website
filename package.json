@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 4173",
     "test": "tsx --test tests/i18n.test.ts",
-    "test:e2e": "node tests/bilingual.e2e.mjs"
+    "test:e2e": "node tests/bilingual.e2e.mjs",
+    "guide:pdf": "node scripts/export-nfc-guide.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

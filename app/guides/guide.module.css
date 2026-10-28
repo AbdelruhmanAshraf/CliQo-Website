@@ -40,12 +40,27 @@
   .guide footer { flex-direction: column; }
 }
 @media print {
+  @page { size: A4; margin: 16mm; }
   .guide { background: #fff; }
   .header nav,.header button { display: none !important; }
   .header { min-height: auto; padding: 0 0 10px; }
   .hero,.paths,.steps,.notes,.guide footer { width: 100%; }
-  .hero { padding: 20px 0; }
-  .paths,.stepGrid { break-inside: avoid; }
+  .hero { padding: 20px 0 24px; }
+  .hero h1 { font-size: 34px; }
+  .hero > p:last-child { max-width: none; font-size: 14px; line-height: 1.7; }
+  .kicker { font-size: 12px; }
+  .paths { display: block; }
+  .paths article { margin-bottom: 14px; padding: 20px; }
+  .paths h2 { font-size: 22px; }
+  .paths ol { font-size: 13px; line-height: 1.6; }
+  .steps { break-before: page; padding: 0 0 24px; }
+  .steps h2,.notes h2 { font-size: 25px; }
+  .stepGrid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .stepGrid article { min-height: 150px; padding: 15px; }
+  .stepGrid h3 { font-size: 16px; }
+  .stepGrid p { font-size: 13px; line-height: 1.6; }
+  .notes { padding: 18px; }
+  .notes ul { font-size: 13px; line-height: 1.6; }
   .paths article,.stepGrid article,.notes { break-inside: avoid; box-shadow: none; }
-  .guide footer { padding-bottom: 0; }
+  .guide footer { padding-bottom: 0; font-size: 12px; }
 }

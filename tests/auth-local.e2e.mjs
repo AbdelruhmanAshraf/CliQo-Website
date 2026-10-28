@@ -12,7 +12,7 @@ for (const value of [base, env.NEXT_PUBLIC_SUPABASE_URL]) assert.ok(['localhost'
 const db = new pg.Client({connectionString: env.CLIQO_DATABASE_URL, connectionTimeoutMillis: 10000}); await db.connect();
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {auth: {persistSession: false}});
 const browser = await chromium.launch({channel: 'chrome', headless: true});
-const users = [], items = [], skus = [], draftNames = [], checks = [], browserErrors = [];
+const users = [], items = [], skus = [], draftNames = [], assets = [], checks = [], browserErrors = [];
 async function createAccount(role) {
   const email = `cliqo-local-${randomUUID()}@example.invalid`, password = randomBytes(24).toString('hex');
   const {data, error} = await admin.auth.admin.createUser({email, password, email_confirm: true});
@@ -53,6 +53,27 @@ try {
   await customer.page.getByRole('button', {name: 'Switch to English'}).first().click();await customer.page.waitForFunction(()=>document.documentElement.lang === 'en');
   assert.equal(await customer.page.locator('textarea[name=shortDescription]').inputValue(), 'نص عربي كتبه المالك');
   checks.push('Page editor draft and author language survive switching');
+  await customer.page.locator('input[name=displayName]').fill('CliQo test profile');
+  await customer.page.locator('textarea[name=shortDescription]').fill('Test profile');
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXcAAAAASUVORK5CYII=', 'base64');
+  await customer.page.locator('input[name=avatar]').setInputFiles({name: 'avatar.png', mimeType: 'image/png', buffer: pixel});
+  await customer.page.locator('form:has(input[name=avatar]) button[type=submit]').click();
+  await customer.page.waitForURL('**/dashboard/pages');
+  const firstImage = (await db.query('select avatar_path from public.merchant_pages where id=$1', [pageId])).rows[0].avatar_path;
+  assert.ok(firstImage?.startsWith(customer.id+'/'+pageId+'/avatar-'));
+  assets.push(firstImage);
+  await go(customer.page, '/dashboard/pages/'+pageId);
+  assert.ok(await customer.page.locator('img[class*=previewAvatar]').count(), 'Saved avatar renders in editor');
+  await customer.page.locator('input[name=avatar]').setInputFiles({name: 'replacement.png', mimeType: 'image/png', buffer: pixel});
+  await customer.page.locator('form:has(input[name=avatar]) button[type=submit]').click();
+  await customer.page.waitForURL('**/dashboard/pages');
+  const secondImage = (await db.query('select avatar_path from public.merchant_pages where id=$1', [pageId])).rows[0].avatar_path;
+  assert.ok(secondImage?.startsWith(customer.id+'/'+pageId+'/avatar-'));
+  assert.notEqual(secondImage, firstImage);
+  assets.push(secondImage);
+  const assetRows = (await db.query("select name from storage.objects where bucket_id='merchant-assets' and name=any($1::text[])", [[firstImage,secondImage]])).rows.map(row=>row.name);
+  assert.deepEqual(assetRows, [secondImage], 'Replacement removes old avatar and retains new one');
+  checks.push('Page avatar upload, save, render and replacement cleanup');
   const foreign = await other.auth.from('merchant_pages').select('id').eq('id', pageId);assert.equal(foreign.error, null);assert.deepEqual(foreign.data, []);
   const foreignItem = await other.auth.from('smart_items').select('id').eq('id', item.id);assert.equal(foreignItem.error, null);assert.deepEqual(foreignItem.data, []);
   checks.push('Second customer cannot read another owner’s page or item');
@@ -110,6 +131,7 @@ try {
   await writeFile(new URL('../../output/cliqo-bilingual-review/auth-checks.json', import.meta.url), JSON.stringify({checks, errors: browserErrors},null,2));console.log(`${checks.length} local authenticated scenarios passed.`);
 } finally {
   await browser.close();
+  if (assets.length) await admin.storage.from('merchant-assets').remove(assets);
   if (items.length) await db.query('delete from public.smart_items where id=any($1::uuid[])', [items]);
   if (skus.length) await db.query('delete from public.product_skus where id=any($1::uuid[])', [skus]);
   if (draftNames.length) await db.query('delete from public.product_skus where display_name=any($1::text[])', [draftNames]);
