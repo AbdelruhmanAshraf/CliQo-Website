@@ -1,0 +1,95 @@
+/* Final identity pass shared by storefront, account and operations interfaces. */
+html { accent-color: var(--color-brand-accent); }
+body { background: var(--color-page); color: var(--color-text); }
+::selection { background: var(--color-brand-accent); color: var(--color-accent-contrast); }
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid rgb(var(--cliqo-orange-rgb) / .42);
+  outline-offset: 3px;
+}
+
+:where(button, input, select, textarea) { font: inherit; }
+:where(input, select, textarea) { border-color: var(--color-border); }
+
+.brand img,
+.st-nav-brand img,
+.st-footer-brand img,
+.st-dashboard-logo img,
+.ops-brand img { display: block; object-fit: contain; }
+
+.st-site-nav,
+.st-dashboard-side,
+.ops-sidebar,
+.ops-topbar,
+.orders-panel,
+.ops-metrics article,
+.inventory-summary article,
+.catalog-panel,
+.public-card { border-color: var(--color-border); }
+
+.st-button-dark,
+.save-note,
+.checkout-button,
+.signout-button,
+.primary-button { background: var(--button-primary-bg); color: var(--button-primary-fg); }
+
+.st-button-orange,
+.cq-banner-reviews .cq-banner-cta { background: var(--button-accent-bg); color: var(--button-accent-fg); }
+
+.st-product-card,
+.st-cart-panel,
+.st-cart-summary,
+.st-cart-state,
+.st-dashboard-stats article,
+.st-dashboard-item,
+.orders-panel,
+.ops-metrics article,
+.inventory-summary article { box-shadow: var(--shadow-soft); }
+
+/* Admin: keep semantic danger states distinct, use CliQo colors for non-semantic decoration. */
+.ops-layout { background: var(--color-surface-muted); color: var(--color-text); }
+.ops-sidebar,
+.ops-topbar,
+.orders-panel,
+.ops-metrics article,
+.inventory-summary article { background: var(--color-surface); }
+.ops-sidebar nav a.active,
+.filter-tabs button.selected,
+.table-footer button.page-current { background: var(--color-surface-primary-soft); color: var(--color-brand-primary); }
+.store-dot,
+.demo-chip i { background: var(--color-brand-accent); }
+.metric-icon.green,
+.metric-icon.blue,
+.metric-icon.purple { background: var(--color-surface-primary-soft); color: var(--color-brand-primary); }
+.metric-icon.orange { background: var(--color-surface-accent-soft); color: var(--color-accent-text); }
+.pay-method.card,
+.status-new,
+.status-confirmed,
+.status-shipped { background: var(--color-surface-primary-soft); color: var(--color-brand-primary); }
+.search-field:focus-within { border-color: var(--color-brand-accent); box-shadow: 0 0 0 3px rgb(var(--cliqo-orange-rgb) / .16); }
+.orders-table input[type="checkbox"] { accent-color: var(--color-brand-accent); }
+
+.cliqo-symbol {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.7);
+}
+
+/* The supplied logo canvases include clear space around the visible artwork. */
+.st-nav-brand img { width: 144px; }
+.st-footer-brand img { width: 180px; }
+.st-dashboard-logo img { width: 178px; }
+.ops-brand-lockup img { width: 152px; }
+
+.ops-avatar,
+.avatar-small { overflow: hidden; padding: 2px; background: var(--color-surface); }
+
+@media (max-width: 750px) {
+  .st-nav-brand img { width: 112px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}

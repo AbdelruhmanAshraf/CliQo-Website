@@ -5,8 +5,8 @@ import { useCopy } from '@/i18n/client';
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-export function DesignUpload({ reference, orderLineId, required, files }: {
-  reference: string; orderLineId: string; required: boolean; files: { name: string; createdAt: string }[];
+export function DesignUpload({ reference, orderLineId, required, open, files }: {
+  reference: string; orderLineId: string; required: boolean; open: boolean; files: { name: string; createdAt: string }[];
 }) {
   const tr = useCopy();
 
@@ -16,7 +16,7 @@ export function DesignUpload({ reference, orderLineId, required, files }: {
   const hasFile = files.length > 0;
   return <form className="design-upload" onSubmit={async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !open) return;
     const form = event.currentTarget;
     const file = new FormData(form).get("file");
     if (!(file instanceof File) || file.size < 1 || file.size > 5 * 1024 * 1024) {
@@ -43,11 +43,12 @@ export function DesignUpload({ reference, orderLineId, required, files }: {
   }}>
     <strong>{required && !hasFile ? tr("مطلوب قبل بدء الإنتاج") : tr("ملف التصميم")}</strong>
     {hasFile && <ul>{files.map((file, index) => <li key={`${file.name}-${index}`}>{file.name}</li>)}</ul>}
-    {files.length < 3 && <>
+    {open && files.length < 3 && <>
       <label>{tr("اختر ملف JPG أو PNG أو WebP أو PDF")}<input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required={required && !hasFile} /></label>
       <button type="submit" className="button button-secondary" disabled={busy}>{busy ? tr("جاري الرفع…") : hasFile ? tr("رفع نسخة محدثة") : tr("رفع ملف التصميم")}</button>
       <small>{tr("الملف خاص بالطلب، الحد الأقصى ٥ ميجابايت. يمكنك إضافة ٣ ملفات كحد أقصى.")}</small>
     </>}
+    {!open && <small>{tr("انتهت فترة استلام ملفات التصميم لهذا الطلب.")}</small>}
     {message && <p role="status">{tr(message)}</p>}
   </form>;
 }

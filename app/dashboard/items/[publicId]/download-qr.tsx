@@ -4,7 +4,7 @@ import { useCopy } from '@/i18n/client';
 
 import { useState } from "react";
 
-export function DownloadQr({ isLocal }: { isLocal: boolean }) {
+export function DownloadQr({ downloadReady, preview }: { downloadReady: boolean; preview: boolean }) {
   const tr = useCopy();
 
   const [downloading, setDownloading] = useState(false);
@@ -24,7 +24,7 @@ export function DownloadQr({ isLocal }: { isLocal: boolean }) {
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch {
-      window.alert("تعذر تنزيل QR. حدّث الصفحة وحاول مرة أخرى.");
+      window.alert(tr("تعذر تنزيل QR. حدّث الصفحة وحاول مرة أخرى."));
     } finally {
       setDownloading(false);
     }
@@ -32,8 +32,9 @@ export function DownloadQr({ isLocal }: { isLocal: boolean }) {
 
   return <section className="item-qr-download" aria-labelledby="item-qr-title">
     <div><strong id="item-qr-title">{tr("QR الخاص بقطعتك")}</strong><p>{tr("ملف SVG واضح للطباعة. يفتح نفس الرابط الثابت المسجل على NFC.")}</p>
-      {isLocal && <small>{tr("نسخة تجربة محلية فقط؛ لا ترسلها للطباعة ولا تكتب رابطها على NFC.")}</small>}
+      {!downloadReady && <small>{tr("تنزيل QR متاح بعد ضبط عنوان الموقع.")}</small>}
+      {preview && <small>{tr("QR التجربة يفتح الموقع المحلي فقط. لا تطبعه على منتج للبيع.")}</small>}
     </div>
-    <button type="button" onClick={download} disabled={downloading}>{downloading ? tr("جاري التجهيز…") : tr("نزّل QR بصيغة SVG")}</button>
+    <button type="button" onClick={download} disabled={downloading || !downloadReady}>{downloading ? tr("جاري التجهيز…") : tr(preview ? "نزّل QR للتجربة · SVG" : "نزّل QR بصيغة SVG")}</button>
   </section>;
 }

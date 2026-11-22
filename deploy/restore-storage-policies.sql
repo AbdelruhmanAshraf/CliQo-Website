@@ -23,6 +23,12 @@ create policy "public reads published merchant assets" on storage.objects
     bucket_id = 'merchant-assets' and app_private.is_public_landing_asset(name)
   );
 
+drop policy if exists "public reads catalog images" on storage.objects;
+create policy "public reads catalog images" on storage.objects
+  for select to anon, authenticated using (
+    bucket_id = 'catalog-images'
+  );
+
 drop policy if exists "customers read their merchant assets" on storage.objects;
 create policy "customers read their merchant assets" on storage.objects
   for select to authenticated using (

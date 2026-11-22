@@ -1,11 +1,13 @@
 
 <!-- CLIQO-BRAND-UPDATE -->
-> **تحديث الهوية — 24 أكتوبر 2026:** **CliQo | كليكو** · **One Click .. You’re There**  
-> الألوان: Deep Green `#003A31` · Orange `#FF6A00` · Cream `#FFF6E8` · White `#FAFAF8` · Gray `#E6E8EB`. الخطوط: ITC Avant Garde Gothic Pro Bold + Forma DJR Arabic Deck Medium.  
-> هوية التنفيذ الحالية معتمدة بهذا الاسم والشعار والألوان؛ أي اتجاه أقدم أدناه تتقدمه هذه المواصفات. [مرجع الهوية الحالي](../output/cliqo-brand-identity/BRAND-GUIDELINES.md). أسماء الملفات والمسارات والأكواد والنطاقات القديمة لا تعني إعادة تسميتها أو امتلاك نطاق جديد.
+> **ألوان الموقع — 11 نوفمبر 2026:** **CliQo | كليكو** · **One Click .. You’re There**
+>
+> الألوان: Black `#000000` · Orange `#FB6221` · Charcoal `#1E1E1E` · Light Gray `#D1D2D5`. الشعار والأيقونة: ملفات المؤسس في `public/brand/2026-11-identity/`. خطوط النص الحالية: ITC Avant Garde Gothic Pro Bold + Forma DJR Arabic Deck Medium؛ ملف Croparo غير مرفق.
+>
+> ألوان واجهة الموقع والشعار الحاليان من أرشيف المؤسس `لوجو كليكو.rar`؛ يتقدمان على المراجع الأقدم. الاسم والشعار النصي الرسمي `One Click .. You’re There` باقيان لحين اعتماد تغيير صريح. [مرجع تنفيذ الهوية](design.md). أسماء الملفات والمسارات والأكواد والنطاقات القديمة لا تعني إعادة تسميتها أو امتلاك نطاق جديد.
 <!-- /CLIQO-BRAND-UPDATE -->
 
-Read `Agent.md`, `Plan.md`, and `design.md` before website work. Treat `../product.md` as the stand source of truth, `../tech-stack.md` as the architecture source, and `../output/cliqo-brand-identity/BRAND-GUIDELINES.md` as the current CliQo brand direction. Older two-product, square-hub, self-hosted-stack and Qarrebha plans are historical where they conflict.
+Read `Agent.md`, `Plan.md`, and `design.md` before website work. Treat `../product.md` as the stand source of truth, `../tech-stack.md` as the architecture source, and `design.md` plus `public/brand/2026-11-identity/` as the current website identity. The older color and logo guidance in `../output/cliqo-brand-identity/BRAND-GUIDELINES.md` is historical where it conflicts. Older two-product, square-hub, self-hosted-stack and Qarrebha plans are historical where they conflict.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

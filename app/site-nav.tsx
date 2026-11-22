@@ -27,7 +27,7 @@ export function SiteNav() {
 
   return <>
     <div className="st-top-strip"><span>{tr("منتجات ذكية تربط نشاطك بعالمك الرقمي")}</span><span lang="en" dir="ltr">One Click .. You’re There</span></div>
-    <header className="st-site-nav"><Link className="st-nav-brand" href="/" aria-label={tr("CliQo — الرئيسية")} onClick={close}><CliqoLogo width={146} priority /></Link>
+    <header className="st-site-nav"><Link className="st-nav-brand" href="/" aria-label={tr("CliQo — الرئيسية")} onClick={close}><CliqoLogo width={146} preload /></Link>
       <nav className={open ? "st-nav-links open" : "st-nav-links"} id="site-main-links" aria-label={tr("التنقل الرئيسي")}><Link href="/" onClick={close}>{tr("الرئيسية")}</Link><Link href="/products" onClick={close}>{tr("المنتجات")}</Link><Link href="/how-it-works" onClick={close}>{tr("كيف تعمل")}</Link><Link href="/faq" onClick={close}>{tr("الأسئلة الشائعة")}</Link><Link href="/contact" onClick={close}>{tr("تواصل معنا")}</Link></nav>
       <div className="st-nav-actions"><LanguageSwitcher/><Link className="st-nav-account" href="/dashboard">{tr("لوحة العميل")}</Link><Link className="st-nav-cart" href="/cart" aria-label={cart.count ? tr("السلة، {value0} منتجات", {value0: cart.count}) : tr("السلة")}><NavIcon name="cart" />{cart.count > 0 && <span>{cart.count}</span>}</Link><button className="st-nav-toggle" type="button" aria-label={open ? tr("إغلاق القائمة") : tr("فتح القائمة")} aria-controls="site-main-links" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "×" : "☰"}</button></div>
     </header>

@@ -13,7 +13,7 @@ export function ActivationCodeReset({ publicId }: { publicId: string }) {
   const [activationCode, setActivationCode] = useState("");
 
   function issueCode() {
-    if (!window.confirm("هيتم إلغاء كود التفعيل القديم فورًا وإصدار كود جديد يظهر مرة واحدة. تكمّل؟")) return;
+    if (!window.confirm(tr("استعادة الكود تعرض نفس الرقم المحفور. ولو القطعة قديمة، إصدار كود جديد يلغي القديم ولازم تحفره قبل التسليم. تكمّل؟"))) return;
     setMessage("");
     setActivationCode("");
     startTransition(async () => {
@@ -33,7 +33,7 @@ export function ActivationCodeReset({ publicId }: { publicId: string }) {
   }
 
   return <div className="activation-reset">
-    {!activationCode && <button type="button" className="export-button" onClick={issueCode} disabled={pending}>{pending ? tr("جاري الإصدار…") : tr("إصدار كود جديد")}</button>}
+    {!activationCode && <button type="button" className="export-button" onClick={issueCode} disabled={pending}>{pending ? tr("جاري الإصدار…") : tr("اعرض كود التفعيل")}</button>}
     {activationCode && <div className="activation-reset-code"><code dir="ltr">{activationCode}</code><button type="button" className="export-button" onClick={copyCode}>{tr("انسخ الكود")}</button></div>}
     {message && <small role="status">{tr(message)}</small>}
   </div>;

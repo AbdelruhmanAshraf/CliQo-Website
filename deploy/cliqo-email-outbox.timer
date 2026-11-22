@@ -1,0 +1,11 @@
+[Unit]
+Description=Run CliQo transactional email queue every minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=cliqo-email-outbox.service
+
+[Install]
+WantedBy=timers.target

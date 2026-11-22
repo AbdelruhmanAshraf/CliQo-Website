@@ -3,19 +3,20 @@ import {fileURLToPath} from 'node:url';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 
-const base = process.env.CLIQO_TEST_URL || 'http://localhost:4174';
+const base = process.env.CLIQO_TEST_URL || 'http://localhost:4173';
 const output = new URL('../../output/cliqo-bilingual-review/', import.meta.url);
 await mkdir(output, {recursive: true});
 const browser = await chromium.launch({channel: process.env.CLIQO_BROWSER_CHANNEL || 'chrome', headless: true});
 const failures = [], checks = [];
 const context = await browser.newContext({viewport: {width: 1440, height: 1000}});
-const page = await context.newPage();
+const page = await context.newPage();page.setDefaultTimeout(20000);page.setDefaultNavigationTimeout(60000);
 page.on('pageerror', (error) => failures.push(error.message));
-async function visit(path) {await page.goto(base + path, {waitUntil: 'domcontentloaded'}); await page.locator('h1').first().waitFor();}
+async function visit(path) {await page.goto(base + path, {waitUntil: 'domcontentloaded'}); await page.locator('h1').first().waitFor();if(path==='/products/stand')await page.locator('.store-design-list button').first().waitFor();}
 async function switchTo(locale) {
   if (await page.locator('html').getAttribute('lang') === locale) return;
   await page.getByRole('button', {name: locale === 'en' ? 'Switch to English' : 'التبديل للعربية'}).first().click();
   await page.waitForFunction((lang) => document.documentElement.lang === lang, locale);
+  if (currentPath === '/products/stand') await page.locator('.store-design-list button').first().waitFor();
   assert.equal(new URL(page.url()).pathname, new URL(base + currentPath).pathname);
 }
 async function untranslated() {
@@ -38,7 +39,7 @@ try {
   const cookie = (await context.cookies()).find((cookie) => cookie.name === 'cliqo-locale');
   assert.equal(cookie.value, 'en'); assert.ok(cookie.expires * 1000 - Date.now() > 360 * 86400000);
   await page.reload(); assert.equal(await page.locator('html').getAttribute('dir'), 'ltr');
-  assert.equal(await page.locator('.st-product-card').count(), 6);
+  assert.equal(await page.locator('.campaign-family-card').count(), 3);
   for (const width of [360, 390, 768, 1440]) {
     await page.setViewportSize({width, height: width < 750 ? 844 : 1000});
     for (const locale of ['en', 'ar']) {
@@ -54,7 +55,7 @@ try {
     }
   }
   await page.setViewportSize({width: 1440, height: 1000});
-  for (const path of ['/products', '/products/stand', '/products/card', '/products/coaster', '/products/wallet', '/products/magnetic-wallet', '/products/keychain', '/how-it-works', '/faq', '/contact', '/cart', '/checkout', '/login', '/guides', '/orders/CQ-000000', '/missing-page']) {
+  for (const path of ['/products', '/products/stand', '/products/card', '/products/coaster', '/how-it-works', '/faq', '/contact', '/cart', '/checkout', '/login', '/guides', '/orders/CQ-000000', '/missing-page']) {
     currentPath = path; await visit(path); await switchTo('en');
     assert.deepEqual(await untranslated(), [], `${path} has untranslated visible copy`);
     assert.ok(!/[\u0621-\u064a]/.test((await page.title()).replaceAll('كليكو', '')), `${path} metadata`);
@@ -63,20 +64,29 @@ try {
     await page.setViewportSize({width: 1440, height: 1000});
     checks.push(`${path}: English copy, metadata, 360px overflow`);
   }
+  for (const path of ['/products/wallet', '/products/magnetic-wallet', '/products/keychain']) {
+    const response = await context.request.get(base + path);
+    assert.equal(response.status(), 404, `${path} must stay hidden from visitors`);
+  }
+  checks.push('Unreleased wallet and keychain pages remain hidden');
   currentPath = '/products/stand'; await visit(currentPath);
-  await page.locator('#stand-face').selectOption('review');
-  // The stored Arabic variant is deliberately the same in both locales.
-  await page.locator('#stand-variant').selectOption('أبيض');
-  await page.locator('input[name="stand-design"]').nth(2).check();
-  await page.locator('#business-name').fill('اختبار CliQo');
-  await page.locator('#destination-url').fill('https://example.com/test');
+  await page.locator('.store-design-list button').filter({hasText:'Facebook'}).click();
+  await page.locator('input[name="tier"]').nth(1).check();
+  await page.locator('input[name="businessName"]').fill('اختبار CliQo');
+  await page.locator('input[name="destinationUrl"]').fill('https://example.com/test');
+  await page.locator('.store-custom-form button[type="submit"]').click();
+  await page.locator('.store-custom-form [role="status"]').waitFor();
+  await page.locator('input[name="destinationUrl"]').fill('https://example.com/updated');
+  assert.equal(await page.locator('.store-custom-form [role="status"]').count(), 0, 'Editing confirmed details requires confirmation again');
+  await page.locator('input[name="destinationUrl"]').fill('https://example.com/test');
+  checks.push('Edited custom design details invalidate the previous confirmation');
   await switchTo('ar');
-  assert.equal(await page.locator('#stand-variant').inputValue(), 'أبيض');
-  assert.equal(await page.locator('#business-name').inputValue(), 'اختبار CliQo');
-  assert.equal(await page.locator('#destination-url').inputValue(), 'https://example.com/test');
+  assert.match(await page.locator('.store-product-info h1').innerText(), /Facebook/);
+  assert.equal(await page.locator('input[name="businessName"]').inputValue(), 'اختبار CliQo');
+  assert.equal(await page.locator('input[name="destinationUrl"]').inputValue(), 'https://example.com/test');
   await switchTo('en');
-  assert.equal(await page.locator('#business-name').inputValue(), 'اختبار CliQo');
-  checks.push('Product option and custom form state survive both language changes');
+  assert.equal(await page.locator('input[name="businessName"]').inputValue(), 'اختبار CliQo');
+  checks.push('Product design and custom form state survive both language changes');
   // Seed a historical v1 cart only in this isolated browser; no database order is made.
   await page.evaluate(() => localStorage.setItem('cliqo-cart-v1', JSON.stringify([{key: 'legacy-example', skuId: '00000000-0000-4000-8000-000000000000', slug: 'stand', name: 'ستاند NFC', unitPriceEgp: 150.5, quantity: 2, choices: ['تقييم Google', 'أسود', 'T0']}])));
   currentPath = '/cart'; await visit('/cart'); await page.reload();

@@ -6,7 +6,7 @@ await mkdir(new URL('assets/',output),{recursive:true});
 for(const [source,target] of [
  ['../Fonts/forma-djr-arabic-deck-medium.otf','forma.otf'],
  ['../Fonts/itc-avant-garde-gothic-pro-bold.otf','avant-garde.otf'],
- ['../public/brand/cliqo-wordmark.png','cliqo-wordmark.png'],
+ ['../public/brand/cliqo-2026-pdf-primary.png','cliqo-wordmark.png'],
  ...['reviews','links','custom'].map(id=>[`../public/campaigns/launch-posters/${id}-art.png`,`${id}-art.png`]),
 ]) await copyFile(new URL(source,import.meta.url),new URL('assets/'+target,output));
 const siteCss=await readFile(new URL('../app/cliqo-refresh.css',import.meta.url),'utf8');

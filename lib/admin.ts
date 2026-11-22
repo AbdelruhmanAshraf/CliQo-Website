@@ -6,7 +6,7 @@ export type StaffRole = "owner" | "admin" | "operations" | "fulfillment" | "supp
 export async function requireStaff(allowed?: readonly StaffRole[]) {
   const supabase = await createClient();
   const { data: auth, error: authError } = await supabase.auth.getClaims();
-  if (authError || !auth?.claims?.sub) redirect("/login?next=%2Fadmin%2Forders");
+  if (authError || !auth?.claims?.sub) redirect("/login?next=%2Fcliqo-control%2Forders");
 
   const { data: staff, error } = await supabase
     .from("staff_members")
@@ -16,5 +16,8 @@ export async function requireStaff(allowed?: readonly StaffRole[]) {
     .maybeSingle();
   if (error) throw new Error("تعذر التحقق من صلاحيات لوحة التشغيل.");
   if (!staff || (allowed && !allowed.includes(staff.role as StaffRole))) notFound();
+  if ((auth.claims as Record<string, unknown>).aal !== "aal2") {
+    redirect("/cliqo-control/security?next=%2Fcliqo-control%2Forders");
+  }
   return { supabase, staff: staff as { user_id: string; display_name: string; role: StaffRole; is_active: boolean } };
 }

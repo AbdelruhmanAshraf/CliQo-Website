@@ -21,7 +21,7 @@ try {
   await page.evaluate(() => {
     const notice = document.createElement('p');
     notice.textContent = 'نسخة مراجعة محلية - تُختبر خطوات NFC على الشريحة والهاتف الفعليين قبل تسليمها مع المنتج.';
-    notice.style.cssText = 'font: 15px sans-serif; color:#003a31; background:#fff6e8; border:1px solid #ff6a00; padding:12px; margin:0 0 18px; direction:rtl;';
+    notice.style.cssText = 'font: 15px sans-serif; color:#00241c; background:#ffffff; border:1px solid #ff6a00; padding:12px; margin:0 0 18px; direction:rtl;';
     document.querySelector('main section')?.before(notice);
   });
   await page.pdf({ path: fileURLToPath(output), format: 'A4', printBackground: true,

@@ -5,7 +5,7 @@ let storageAdmin: SupabaseClient | undefined;
 
 export function getStorageAdmin() {
   if (storageAdmin) return storageAdmin;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error("Supabase server storage credentials are missing.");
   storageAdmin = createClient(url, key, {

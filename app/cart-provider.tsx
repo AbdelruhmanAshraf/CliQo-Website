@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-export type CustomDesign = { businessName: string; destinationUrl: string };
+export type CustomDesign = { businessName: string; destinationUrl: string; brief?: string };
 
 export type CartLine = {
   key: string;
@@ -31,14 +31,14 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "cliqo-cart-v1";
 
-function validLines(value: unknown): CartLine[] {
+export function validLines(value: unknown): CartLine[] {
   if (!Array.isArray(value)) return [];
   return value.filter((line): line is CartLine => Boolean(
     line && typeof line === "object" &&
     typeof line.key === "string" && typeof line.skuId === "string" &&
     typeof line.slug === "string" &&
-    typeof line.name === "string" && Number.isFinite(line.unitPriceEgp) &&
-    Number.isInteger(line.quantity) && line.quantity > 0 &&
+    typeof line.name === "string" && Number.isFinite(line.unitPriceEgp) && line.unitPriceEgp > 0 &&
+    Number.isInteger(line.quantity) && line.quantity > 0 && line.quantity <= 20 &&
     Array.isArray(line.choices) && line.choices.every((choice: unknown) => typeof choice === "string") &&
     (line.optionValues === undefined || (
       line.optionValues && typeof line.optionValues === "object" && !Array.isArray(line.optionValues) &&
@@ -46,42 +46,45 @@ function validLines(value: unknown): CartLine[] {
     )) &&
     (line.customDesign === undefined || (
       typeof line.customDesign?.businessName === "string" && line.customDesign.businessName.length > 0 &&
-      typeof line.customDesign?.destinationUrl === "string" && line.customDesign.destinationUrl.startsWith("https://")
+      typeof line.customDesign?.destinationUrl === "string" && line.customDesign.destinationUrl.startsWith("https://") &&
+      (line.customDesign.brief === undefined || typeof line.customDesign.brief === "string" && line.customDesign.brief.length <= 1200)
     ))
   ));
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children, testMode = false }: { children: ReactNode; testMode?: boolean }) {
+  const storageKey = testMode ? "cliqo-test-cart-v1" : STORAGE_KEY;
   const [items, setItems] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem(storageKey);
       if (stored) setItems(validLines(JSON.parse(stored)));
     } catch {
       setItems([]);
     } finally {
       setReady(true);
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (ready) {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        window.localStorage.setItem(storageKey, JSON.stringify(items));
       } catch {
         // The cart remains usable for this session when browser storage is unavailable.
       }
     }
-  }, [items, ready]);
+  }, [items, ready, storageKey]);
 
   const addItem = useCallback((line: NewLine) => {
     if (!Number.isFinite(line.unitPriceEgp) || line.unitPriceEgp <= 0) return;
-    const key = line.skuId + (line.customDesign ? ":" + encodeURIComponent(JSON.stringify(line.customDesign)) : "");
+    const design = line.customDesign;
+    const key = line.skuId + (design ? ":" + encodeURIComponent(JSON.stringify({ businessName: design.businessName, destinationUrl: design.destinationUrl })) : "");
     setItems((current) => {
       const existing = current.find((item) => item.key === key);
-      if (existing) return current.map((item) => item.key === key ? { ...item, quantity: Math.min(20, item.quantity + 1) } : item);
+      if (existing) return current.map((item) => item.key === key ? { ...item, customDesign: line.customDesign, quantity: Math.min(20, item.quantity + 1) } : item);
       return [...current, { ...line, key, quantity: 1 }];
     });
   }, []);
@@ -94,8 +97,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeItem = useCallback((key: string) => setItems((current) => current.filter((item) => item.key !== key)), []);
   const clearCart = useCallback(() => {
     setItems([]);
-    try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* Cart state still clears in memory. */ }
-  }, []);
+    try { window.localStorage.removeItem(storageKey); } catch { /* Cart state still clears in memory. */ }
+  }, [storageKey]);
   const value = useMemo(() => ({
     items,
     ready,

@@ -4,6 +4,7 @@ out/
 .env*
 !.env.example
 !deploy/app.env.example
+deploy/app.env
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
@@ -11,3 +12,7 @@ supabase/.temp/
 supabase/.branches/
 
 .next-verification/
+
+.next-merch-review/
+.next-catalog-review/
+.next-campaign-review/

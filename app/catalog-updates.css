@@ -1,0 +1,9 @@
+.catalog-face-filters{padding-top:0;margin-top:-8px}
+.catalog-mockup-tag{position:absolute;bottom:10px;inset-inline-end:10px;background:#fffffff0;color:#000000;border:1px solid var(--color-border-subtle);border-radius:5px;padding:5px 7px;font-size:10px;line-height:1.2}
+.new-catalog .store-breadcrumb{padding-top:14px;padding-bottom:12px}
+.new-catalog-header{padding-top:4px;padding-bottom:15px}
+.new-catalog-header h1{font-size:clamp(29px,3vw,40px);margin:4px 0}
+.new-catalog-header p{margin:5px 0 0}
+.new-catalog .catalog-filters{margin-bottom:12px}
+.new-catalog .catalog-use-filters{margin-top:0}
+@media(max-width:600px){.catalog-face-filters{margin-top:-4px}}

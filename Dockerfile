@@ -24,6 +24,7 @@ RUN groupadd --system cliqo && useradd --system --gid cliqo cliqo
 COPY --from=build --chown=cliqo:cliqo /app/.next/standalone ./
 COPY --from=build --chown=cliqo:cliqo /app/.next/static ./.next/static
 COPY --from=build --chown=cliqo:cliqo /app/public ./public
+COPY --from=build --chown=cliqo:cliqo /app/deploy/email-outbox-runner.mjs ./deploy/email-outbox-runner.mjs
 USER cliqo
 EXPOSE 3000
 CMD ["node", "server.js"]

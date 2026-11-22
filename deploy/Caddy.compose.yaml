@@ -1,0 +1,20 @@
+services:
+  caddy:
+    image: caddy:2.11.7
+    container_name: cliqo-caddy
+    network_mode: host
+    restart: unless-stopped
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - /opt/cliqo/website/deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/cliqo/caddy/data:/data
+      - /opt/cliqo/caddy/config:/config

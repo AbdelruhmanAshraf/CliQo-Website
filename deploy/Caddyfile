@@ -1,0 +1,19 @@
+www.cliqoeg.com {
+	redir https://cliqoeg.com{uri} permanent
+}
+
+cliqoeg.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+api.cliqoeg.com {
+	encode zstd gzip
+	@supabase path /auth/* /rest/* /storage/* /realtime/* /functions/* /graphql/v1*
+	handle @supabase {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

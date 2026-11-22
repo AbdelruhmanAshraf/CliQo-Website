@@ -9,6 +9,8 @@ import { signOut } from "@/app/auth/signout-actions";
 import { CopyPublicUrl } from "./copy-public-url";
 import { DownloadQr } from "./download-qr";
 import { SmartItemEditor } from "./smart-item-editor";
+import { getSmartItemQrTarget } from "@/lib/smart-item-qr";
+import { getDb } from "@/lib/db";
 import styles from "../../dashboard.module.css";
 
 export const dynamic = "force-dynamic";
@@ -35,27 +37,36 @@ export default async function SmartItemSettingsPage({ params }: { params: Promis
   const { data: pages } = await supabase.from("merchant_pages")
     .select("id,display_name,is_published").order("updated_at", { ascending: false });
   const { data: analytics } = await supabase.rpc("get_my_item_analytics");
+  const { rows: physicalRows } = await getDb().query<{ nfc_mode: string }>(
+    "select nfc_mode from app_private.smart_item_physical_checks where smart_item_id = $1", [item.id],
+  );
+  const nfcMode = physicalRows[0]?.nfc_mode ?? "unwritten";
   const metric = (analytics ?? []).find((row: { smart_item_id: string }) => row.smart_item_id === item.id);
   const options = (sku.options ?? {}) as Record<string, string>;
   const productName = skuLabel(tr, family?.family_key ?? "", options, sku.display_name);
   const publicUrl = createPublicItemUrl(item.public_id);
+  const qrTarget = getSmartItemQrTarget();
   const isLocalUrl = new URL(publicUrl).hostname === "localhost" || new URL(publicUrl).hostname === "127.0.0.1";
-  const supportsPage = Boolean(family?.supports_landing_page)
-    && (family?.family_key !== "stand" || options.face === "all-in-one");
-  const payment = family?.family_key === "stand" && ["instapay", "vodafone"].includes(options.face ?? "");
+  const supportsPage = Boolean(family?.supports_landing_page) && options.face === "all-in-one";
+  const payment = ["stand", "coaster", "pvc-card"].includes(family?.family_key ?? "")
+    && ["instapay", "vodafone"].includes(options.face ?? "");
   const status = item.state === "disabled" ? "متوقفة" : item.state === "claimed" ? "نشطة" : "قيد التفعيل";
 
   return <main className={`${styles.page} dashboard-page`} >
     <header className={styles.header}><Link className="brand" href="/" aria-label={tr("CliQo الرئيسية")}><CliqoLogo width={124} /></Link><nav className={styles.nav}><Link href="/dashboard">{tr("قطعك")}</Link><Link href="/dashboard/pages">{tr("صفحات الهبوط")}</Link><Link href="/dashboard/analytics">{tr("الإحصائيات")}</Link><Link href="/guides">{tr("تعليمات NFC")}</Link></nav><form action={signOut}><button className="signout-button" type="submit">{tr("تسجيل الخروج")}</button></form><LanguageSwitcher/></header>
     <section className={styles.content}><p className={styles.eyebrow}>{tr("إعدادات القطعة")}</p><h1>{item.internal_name || productName}</h1><p className={styles.intro}>{productName} · {tr(status)}  {tr("· QR وNFC يظلان على الرابط الثابت.")}</p>
-      <CopyPublicUrl url={publicUrl} isLocal={isLocalUrl} />
-      <DownloadQr isLocal={isLocalUrl} />
-      <div className={styles.note}>{tr("في تصميم Template اكتب الرابط الثابت أعلاه على شريحة NFC. لا تكتب رابط الوجهة مباشرة؛ تغييره من الداشبورد لا يتطلب إعادة البرمجة.")} <Link href="/guides">{tr("افتح دليل الإعداد")}</Link>.</div>
+      <CopyPublicUrl publicId={item.public_id} url={publicUrl} isLocal={isLocalUrl} />
+      <DownloadQr downloadReady={Boolean(qrTarget)} preview={Boolean(qrTarget?.preview)} />
+      <div className={styles.note}>{tr("QR مطبوع على قطعتك؛ برمجته تعني تغيير الوجهة أو الصفحة هنا، من غير طباعة كود جديد.")}</div>
+      <div className={styles.note}>{nfcMode === "prewritten"
+        ? tr("NFC مكتوبة مسبقًا بالرابط الثابت. جرّب لمس القطعة بهاتفك؛ أي تعديل للوجهة يتم هنا.")
+        : tr("NFC تُكتب مرة واحدة برابط القطعة الثابت أعلاه باستخدام تطبيق كتابة NFC. اختبرها بهاتف آخر قبل أي قفل دائم.")}
+        {" "}<Link href="/guides">{tr("افتح دليل الإعداد")}</Link>.</div>
       <SmartItemEditor item={{
         id: item.id, publicId: item.public_id, internalName: item.internal_name,
         state: item.state, destinationUrl: item.destination_url, paymentIdentifier: item.payment_identifier,
         recipientLabel: item.recipient_label, landingPageId: item.landing_page_id,
-      }} payment={payment} supportsPage={supportsPage} pages={pages ?? []} analytics={{ opens: Number(metric?.opens ?? 0), clicks: Number(metric?.clicks ?? 0) }} />
+      }} payment={payment} supportsPage={supportsPage} requiresPage={supportsPage} pages={pages ?? []} analytics={{ opens: Number(metric?.opens ?? 0), clicks: Number(metric?.clicks ?? 0) }} />
     </section>
   </main>;
 }

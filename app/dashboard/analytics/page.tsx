@@ -35,7 +35,7 @@ export default async function CustomerAnalyticsPage({
     ? null
     : new Date(until.getTime() - selectedPeriod.duration);
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
-    return <main className="utility-page" ><Link className="brand" href="/" aria-label={tr("CliQo الرئيسية")}><CliqoLogo width={145} /></Link><section><p className="eyebrow">{tr("لوحة CliQo")}</p><h1>{tr("إحصائيات قطعك")}</h1><p className="utility-copy">{tr("فعّل Supabase المحلي لعرض الإحصائيات.")}</p><Link className="utility-back" href="/dashboard">{tr("الرجوع للوحة العميل")}</Link></section></main>;
+    return <main className="utility-page" ><Link className="brand" href="/" aria-label={tr("CliQo الرئيسية")}><CliqoLogo width={145} variant="light" /></Link><section><p className="eyebrow">{tr("لوحة CliQo")}</p><h1>{tr("إحصائيات قطعك")}</h1><p className="utility-copy">{tr("فعّل Supabase المحلي لعرض الإحصائيات.")}</p><Link className="utility-back" href="/dashboard">{tr("الرجوع للوحة العميل")}</Link></section></main>;
   }
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();

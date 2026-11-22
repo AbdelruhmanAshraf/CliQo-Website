@@ -3,7 +3,7 @@ import { useCopy } from '@/i18n/client';
 
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -26,6 +26,8 @@ export function SmartItemEditor({
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState(item.landingPageId ? "page" : "single");
   const [state, setState] = useState(item.state);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,6 +64,7 @@ export function SmartItemEditor({
 
   function togglePause() {
     const nextState = state === "disabled" ? "claimed" : "disabled";
+    if (nextState === "disabled" && !window.confirm(tr("إيقاف القطعة سيمنع الزوار من فتح وجهتها مؤقتًا. هل تريد الإيقاف؟"))) return;
     startTransition(async () => {
       const { error } = await createClient().from("smart_items").update({ state: nextState }).eq("id", item.id).select("id").single();
       if (error) setMessage("تعذر تحديث حالة الرابط.");
@@ -72,6 +75,7 @@ export function SmartItemEditor({
   return <div className="customer-item-editor">
     <div className="customer-item-analytics"><article><span>{tr("إجمالي مرات الفتح")}</span><strong>{analytics.opens.toLocaleString(tr.numberLocale)}</strong></article><article><span>{tr("نقرات الأزرار")}</span><strong>{analytics.clicks.toLocaleString(tr.numberLocale)}</strong></article></div>
     <form className="customer-item-form" onSubmit={save}>
+      <fieldset className="customer-item-controls" disabled={!ready || pending}>
       <label>{tr("اسم اختياري للقطعة")}<input name="internalName" maxLength={80} defaultValue={item.internalName} placeholder={tr("مثال: ستاند الفرع الرئيسي")} /></label>
       {payment ? <>
         <label>{tr("اسم المستلم")}<input name="recipientLabel" maxLength={100} required defaultValue={item.recipientLabel ?? ""} /></label>
@@ -93,7 +97,8 @@ export function SmartItemEditor({
       </>}
       <button type="submit" className="save-note" disabled={pending}>{pending ? tr("جاري الحفظ…") : tr("احفظ التعديلات")}</button>
       {message && <p className="customer-item-message" role="status">{tr(message)}</p>}
+      </fieldset>
     </form>
-    <div className="customer-item-pause"><div><strong>{state === "disabled" ? tr("الرابط متوقف") : tr("الرابط نشط")}</strong><small>{tr("الإيقاف مؤقت ويمكنك إعادة تشغيله في أي وقت.")}</small></div><button type="button" className="signout-button" disabled={pending} onClick={togglePause}>{state === "disabled" ? tr("إعادة التشغيل") : tr("إيقاف مؤقت")}</button></div>
+    <div className="customer-item-pause"><div><strong>{state === "disabled" ? tr("الرابط متوقف") : tr("الرابط نشط")}</strong><small>{tr("الإيقاف مؤقت ويمكنك إعادة تشغيله في أي وقت.")}</small></div><button type="button" className="signout-button" disabled={!ready || pending} onClick={togglePause}>{state === "disabled" ? tr("إعادة التشغيل") : tr("إيقاف مؤقت")}</button></div>
   </div>;
 }

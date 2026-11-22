@@ -3,7 +3,10 @@ import Link from "next/link";
 import { CliqoLogo } from "../cliqo-logo";
 import { SiteNav } from "../site-nav";
 import { MarketingFooter } from "../marketing-footer";
+import { getDb } from "@/lib/db";
 import styles from "./contact.module.css";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   const tr = await getCopy();
@@ -12,6 +15,15 @@ export async function generateMetadata() {
 
 export default async function ContactPage() {
   const tr = await getCopy();
+  let support: { support_channel_ready: boolean; support_email: string | null; support_whatsapp: string | null } | null = null;
+  try {
+    const result = await getDb().query<{ support_channel_ready: boolean; support_email: string | null; support_whatsapp: string | null }>(
+      `select support_channel_ready,support_email,support_whatsapp from app_private.checkout_config where id=true`,
+    );
+    support = result.rows[0] ?? null;
+  } catch {
+    support = null;
+  }
 
   return <><SiteNav /><main className={styles.page}>
     <section className={styles.hero}>
@@ -23,11 +35,12 @@ export default async function ContactPage() {
       <div className={styles.brand}><CliqoLogo width={150} /></div>
       <div>
         <span className={styles.pill}>{tr("الطلبات لم تُفتح بعد")}</span>
-        <h2>{tr("قناة الدعم قيد التجهيز")}</h2>
-        <p>{tr("لسه مفيش وسيلة تواصل رسمية معتمدة. الصفحة دي مش بتجمع بياناتك، ومش بتعرض سعرًا أو موعد تسليم قبل اعتمادهم.")}</p>
+        <h2>{support?.support_channel_ready ? tr("قناة الدعم الرسمية جاهزة") : tr("قناة الدعم قيد التجهيز")}</h2>
+        <p>{support?.support_channel_ready ? tr("تواصل مع CliQo من إحدى القنوات المعتمدة أدناه.") : tr("لسه مفيش وسيلة تواصل رسمية معتمدة. الصفحة دي مش بتجمع بياناتك، ومش بتعرض سعرًا أو موعد تسليم قبل اعتمادهم.")}</p>
         <div className={styles.actions}>
-          <Link className={styles.primary} href="/products">{tr("تصفّح المنتجات")}</Link>
-          <Link className={styles.secondary} href="/faq">{tr("الأسئلة الشائعة")}</Link>
+          {support?.support_channel_ready && support.support_email && <a className={styles.primary} href={`mailto:${support.support_email}`}>{tr("راسلنا بالبريد")}</a>}
+          {support?.support_channel_ready && support.support_whatsapp && <a className={styles.secondary} href={`https://wa.me/${support.support_whatsapp}`} target="_blank" rel="noreferrer">{tr("تواصل عبر واتساب")}</a>}
+          {!support?.support_channel_ready && <><Link className={styles.primary} href="/products">{tr("تصفّح المنتجات")}</Link><Link className={styles.secondary} href="/faq">{tr("الأسئلة الشائعة")}</Link></>}
         </div>
       </div>
     </section>

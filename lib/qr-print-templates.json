@@ -1,0 +1,286 @@
+{
+  "coaster/review/أبيض/T0": {
+    "file": "/print-templates/coasters/google-white.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 352,
+      "y": 573,
+      "size": 333,
+      "style": "square"
+    }
+  },
+  "coaster/review/شفاف/T0": {
+    "file": "/print-templates/coaster-google-clear.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 780,
+      "y": 895,
+      "size": 280
+    },
+    "retired": true
+  },
+  "coaster/facebook/Facebook/T0": {
+    "file": "/print-templates/coasters/facebook.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 760,
+      "y": 650,
+      "size": 292,
+      "style": "square"
+    }
+  },
+  "coaster/instagram/Instagram/T0": {
+    "file": "/print-templates/coasters/instagram.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 783,
+      "y": 701,
+      "size": 284,
+      "style": "square"
+    }
+  },
+  "coaster/tiktok/TikTok/T0": {
+    "file": "/print-templates/coasters/tiktok.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 777,
+      "y": 665,
+      "size": 257,
+      "style": "square"
+    }
+  },
+  "coaster/instapay/InstaPay/T0": {
+    "file": "/print-templates/coasters/instapay.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 790,
+      "y": 558,
+      "size": 300,
+      "style": "square"
+    }
+  },
+  "coaster/vodafone/Vodafone Cash/T0": {
+    "file": "/print-templates/coasters/vodafone.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 776,
+      "y": 610,
+      "size": 291,
+      "style": "square"
+    }
+  },
+  "coaster/all-in-one/All-in-One/T0": {
+    "file": "/print-templates/coasters/all-in-one.png",
+    "widthMm": 120,
+    "heightMm": 120,
+    "qr": {
+      "x": 755,
+      "y": 934,
+      "size": 258,
+      "style": "square"
+    }
+  },
+  "stand/review/أبيض/T0": {
+    "file": "/print-templates/stands/google-white.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 126,
+      "y": 706,
+      "size": 427,
+      "style": "square"
+    }
+  },
+  "stand/review/شفاف/T0": {
+    "file": "/print-templates/stand-google-clear.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 670,
+      "y": 1130,
+      "size": 280
+    },
+    "retired": true
+  },
+  "stand/facebook/Facebook/T0": {
+    "file": "/print-templates/stands/facebook.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 578,
+      "y": 739,
+      "size": 261,
+      "style": "square"
+    }
+  },
+  "stand/instagram/Instagram/T0": {
+    "file": "/print-templates/stands/instagram.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 571,
+      "y": 733,
+      "size": 272,
+      "style": "square"
+    }
+  },
+  "stand/tiktok/TikTok/T0": {
+    "file": "/print-templates/stands/tiktok.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 656,
+      "y": 826,
+      "size": 344,
+      "style": "square"
+    }
+  },
+  "stand/instapay/InstaPay/T0": {
+    "file": "/print-templates/stands/instapay.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 667,
+      "y": 696,
+      "size": 388,
+      "style": "square"
+    }
+  },
+  "stand/vodafone/Vodafone Cash/T0": {
+    "file": "/print-templates/stands/vodafone.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 573,
+      "y": 667,
+      "size": 315,
+      "style": "square"
+    }
+  },
+  "stand/all-in-one/All-in-One/T0": {
+    "file": "/print-templates/stands/all-in-one.png",
+    "widthMm": 100,
+    "heightMm": 150,
+    "qr": {
+      "x": 663,
+      "y": 1178,
+      "size": 252,
+      "style": "square"
+    }
+  },
+  "pvc-card/facebook/Facebook/T0": {
+    "file": "/print-templates/cards/facebook-back.png",
+    "frontFile": "/print-templates/cards/facebook-front.png",
+    "widthMm": 54,
+    "heightMm": 85.6,
+    "qr": {
+      "x": 132,
+      "y": 135,
+      "size": 374,
+      "style": "square"
+    },
+    "id": {
+      "x": 319,
+      "y": 976,
+      "fontSize": 20,
+      "fill": "#141414"
+    }
+  },
+  "pvc-card/instagram/Instagram/T0": {
+    "file": "/print-templates/cards/instagram-back.png",
+    "frontFile": "/print-templates/cards/instagram-front.png",
+    "widthMm": 54,
+    "heightMm": 85.6,
+    "qr": {
+      "x": 132,
+      "y": 140,
+      "size": 371,
+      "style": "square"
+    },
+    "id": {
+      "x": 319,
+      "y": 976,
+      "fontSize": 20,
+      "fill": "#141414"
+    }
+  },
+  "pvc-card/instapay/InstaPay/T0": {
+    "file": "/print-templates/cards/instapay-back.png",
+    "frontFile": "/print-templates/cards/instapay-front.png",
+    "widthMm": 54,
+    "heightMm": 85.6,
+    "qr": {
+      "x": 145,
+      "y": 118,
+      "size": 346,
+      "style": "square"
+    },
+    "id": {
+      "x": 319,
+      "y": 976,
+      "fontSize": 20,
+      "fill": "#35105E"
+    }
+  },
+  "pvc-card/review/Google Review/T0": {
+    "file": "/print-templates/cards/google-back.png",
+    "frontFile": "/print-templates/cards/google-front.png",
+    "widthMm": 54,
+    "heightMm": 85.6,
+    "qr": {
+      "x": 287,
+      "y": 810,
+      "size": 347,
+      "style": "square"
+    },
+    "id": {
+      "x": 462,
+      "y": 1410,
+      "fontSize": 30,
+      "fill": "#DDDDDD"
+    }
+  },
+  "pvc-card/all-in-one/أسود/T0": {
+    "file": "/print-templates/cards/main-black-back.png",
+    "frontFile": "/print-templates/cards/main-black-front.png",
+    "widthMm": 85.6,
+    "heightMm": 54,
+    "qr": {
+      "x": 763,
+      "y": 383,
+      "size": 223,
+      "style": "card-dark"
+    },
+    "id": {
+      "x": 505,
+      "y": 574,
+      "fontSize": 20,
+      "fill": "#DDDDDD"
+    }
+  },
+  "pvc-card/all-in-one/أبيض/T0": {
+    "file": "/print-templates/cards/main-white-back.png",
+    "frontFile": "/print-templates/cards/main-white-front.png",
+    "widthMm": 85.6,
+    "heightMm": 54,
+    "qr": {
+      "x": 773,
+      "y": 421,
+      "size": 195,
+      "style": "card-light"
+    },
+    "id": {
+      "x": 505,
+      "y": 574,
+      "fontSize": 20,
+      "fill": "#141414"
+    }
+  }
+}

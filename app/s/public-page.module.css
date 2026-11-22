@@ -4,7 +4,7 @@
   display: grid;
   place-items: center;
   padding: 28px 16px;
-  background: var(--cream);
+  background: var(--white);
   color: var(--green);
 }
 
@@ -15,7 +15,7 @@
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius-shell);
-  box-shadow: 0 18px 48px rgb(0 58 49 / 8%);
+  box-shadow: 0 18px 48px rgb(var(--cliqo-green-rgb) / 8%);
 }
 
 .accentBar {
@@ -73,8 +73,8 @@
   gap: 10px;
   margin: 2px 0 0;
   padding: 20px;
-  background: var(--cream);
-  border: 1px solid #f0e4d2;
+  background: var(--white);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 18px;
 }
 
@@ -123,7 +123,7 @@
   border: 1px solid var(--orange);
   border-radius: 12px;
   background: var(--green);
-  color: var(--cream);
+  color: var(--white);
   cursor: pointer;
   font-size: 14px;
   font-weight: 700;
@@ -155,7 +155,7 @@
   border-inline-start: 4px solid var(--orange);
   border-radius: 12px;
   background: var(--green);
-  color: var(--cream);
+  color: var(--white);
   font-size: 13px;
   line-height: 1.9;
 }
@@ -172,9 +172,9 @@
   min-height: 100svh;
   margin: 0 auto;
   overflow: hidden;
-  background: #f0f3f0;
+  background: var(--color-surface-subtle);
   color: var(--green);
-  box-shadow: 0 0 48px rgb(0 58 49 / 8%);
+  box-shadow: 0 0 48px rgb(var(--cliqo-green-rgb) / 8%);
 }
 
 .merchantCover {
@@ -191,7 +191,7 @@
   inset: auto -30px -84px auto;
   width: 180px;
   height: 180px;
-  border: 20px solid rgb(255 106 0 / 78%);
+  border: 20px solid rgb(var(--cliqo-orange-rgb) / 78%);
   border-radius: 50%;
   content: "";
   pointer-events: none;
@@ -219,8 +219,8 @@
   overflow: hidden;
   border: 5px solid var(--white);
   border-radius: 50%;
-  background: var(--cream);
-  box-shadow: 0 5px 20px rgb(0 58 49 / 14%);
+  background: var(--white);
+  box-shadow: 0 5px 20px rgb(var(--cliqo-green-rgb) / 14%);
 }
 
 .merchantAvatar {
@@ -272,15 +272,28 @@
   justify-content: space-between;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid #0b5347;
+  border: 1px solid #3e3e3e;
   border-radius: 14px;
   background: var(--green);
-  color: var(--cream);
+  color: var(--white);
   font-size: 13px;
   font-weight: 700;
   text-align: start;
   transition: background-color 150ms ease, transform 150ms ease;
+  font-family: inherit;
+  cursor: pointer;
 }
+
+.merchantLink > svg { flex: none; }
+.merchantLink > span:not(.linkArrow) { flex: 1; }
+
+.merchantPayments { display: grid; width: 100%; gap: 12px; margin-top: 26px; text-align: start; }
+.merchantPayments h2 { margin: 0; color: var(--green); font-size: 18px; }
+.merchantPayments article { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.merchantPayments article strong { display: flex; align-items: center; gap: 8px; color: var(--green); }
+.merchantPayments article span { color: var(--muted); }
+.merchantPayments article code { overflow-wrap: anywhere; color: var(--green); font-size: 15px; }
+.merchantPayments p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
 
 .merchantLink:hover {
   transform: translateY(-1px);
@@ -294,7 +307,7 @@
   flex: none;
   place-items: center;
   border-radius: 10px;
-  background: var(--cream);
+  background: var(--white);
   color: var(--green);
   font-family: var(--latin);
   font-size: 17px;
@@ -322,7 +335,7 @@
   border: 1px solid var(--orange);
   border-radius: 12px;
   background: var(--green);
-  color: var(--cream);
+  color: var(--white);
   font-weight: 700;
 }
 

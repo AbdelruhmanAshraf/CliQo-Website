@@ -35,9 +35,18 @@
     "**/*.tsx",
     ".next/dev/types/**/*.ts",
     ".next-verification/types/**/*.ts",
-    ".next-verification/dev/types/**/*.ts"
+    ".next-verification/dev/types/**/*.ts",
+    ".next-merch-review/types/**/*.ts",
+    ".next-merch-review/dev/types/**/*.ts",
+    ".next-catalog-review/types/**/*.ts",
+    ".next-catalog-review/dev/types/**/*.ts",
+    ".next-campaign-review/types/**/*.ts",
+    ".next-campaign-review/dev/types/**/*.ts",
+    ".next-customer-review/types/**/*.ts",
+    ".next-customer-review/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tmp"
   ]
 }

@@ -1,0 +1,38 @@
+services:
+  api-gw:
+    ports: !override
+      - target: 8000
+        published: "8000"
+        host_ip: 127.0.0.1
+        protocol: tcp
+  supavisor:
+    ports: !override
+      - target: 5432
+        published: "5432"
+        host_ip: 127.0.0.1
+        protocol: tcp
+      - target: 6543
+        published: "6543"
+        host_ip: 127.0.0.1
+        protocol: tcp
+  auth:
+    depends_on:
+      templates-server:
+        condition: service_started
+    environment:
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://templates-server/magic_link.html
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "كود الدخول إلى CliQo"
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://templates-server/magic_link.html
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: "تأكيد حساب CliQo"
+      GOTRUE_MAILER_OTP_EXP: "600"
+      GOTRUE_MAILER_OTP_LENGTH: "6"
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL}/callback
+  templates-server:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/templates:/usr/share/caddy:ro
+

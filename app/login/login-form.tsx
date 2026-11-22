@@ -16,9 +16,14 @@ export function LoginForm({ next = "/dashboard", googleEnabled = false }: { next
   const [step, setStep] = useState<LoginStep>("email");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [resendAt, setResendAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const resendSeconds = resendAt === null ? 0 : Math.max(0, Math.ceil((resendAt - now) / 1000));
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (step !== "code" || resendAt === null) return;
@@ -79,10 +84,12 @@ export function LoginForm({ next = "/dashboard", googleEnabled = false }: { next
     setMessage("");
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const appUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || window.location.origin);
+      const redirectUrl = new URL("/auth/callback", appUrl.origin);
+      redirectUrl.searchParams.set("next", next);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo },
+        options: { redirectTo: redirectUrl.toString() },
       });
       if (error) throw error;
     } catch {
@@ -91,26 +98,26 @@ export function LoginForm({ next = "/dashboard", googleEnabled = false }: { next
     }
   }
 
-  return <div className={styles.wrapper}>
+  return <div className={styles.wrapper} data-testid="login-form" data-hydrated={hydrated}>
     {step === "email" ? <form className={styles.form} onSubmit={sendCode}>
       <label className={styles.label} htmlFor="login-email">{tr("البريد الإلكتروني")}</label>
-      <input className={styles.input} id="login-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" dir="ltr" />
-      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? tr("جاري الإرسال…") : tr("ابعتلي كود الدخول")}</button>
+      <input className={styles.input} id="login-email" type="email" autoComplete="email" required disabled={!hydrated} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" dir="ltr" />
+      <button className={styles.primaryButton} type="submit" disabled={!hydrated || busy}>{busy ? tr("جاري الإرسال…") : tr("ابعتلي كود الدخول")}</button>
     </form> : <form className={styles.form} onSubmit={verifyCode}>
       <div className={styles.sentTo}><span>{tr("بعتنا الكود إلى")}</span><strong dir="ltr">{email}</strong></div>
       <label className={styles.label} htmlFor="login-code">{tr("كود الدخول")}</label>
-      <input className={`${styles.input} ${styles.codeInput}`} id="login-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" dir="ltr" />
+      <input className={`${styles.input} ${styles.codeInput}`} id="login-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required disabled={!hydrated} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" dir="ltr" />
       <small className={styles.expiry}>{tr("الكود صالح لمدة 10 دقايق، وبيستخدم مرة واحدة.")}</small>
-      <button className={styles.primaryButton} type="submit" disabled={busy || code.length !== 6}>{busy ? tr("بنتأكد من الكود…") : tr("تأكيد الدخول")}</button>
+      <button className={styles.primaryButton} type="submit" disabled={!hydrated || busy || code.length !== 6}>{busy ? tr("بنتأكد من الكود…") : tr("تأكيد الدخول")}</button>
       <div className={styles.codeActions}>
-        <button type="button" onClick={() => { setStep("email"); setCode(""); setMessage(""); }}>{tr("تغيير البريد")}</button>
-        <button type="button" onClick={() => void sendCode()} disabled={busy || resendSeconds > 0}>{resendSeconds > 0 ? tr("إعادة الإرسال بعد {value0} ثانية", {value0: resendSeconds}) : tr("ابعت كود جديد")}</button>
+        <button type="button" disabled={!hydrated || busy} onClick={() => { setStep("email"); setCode(""); setMessage(""); }}>{tr("تغيير البريد")}</button>
+        <button type="button" onClick={() => void sendCode()} disabled={!hydrated || busy || resendSeconds > 0}>{resendSeconds > 0 ? tr("إعادة الإرسال بعد {value0} ثانية", {value0: resendSeconds}) : tr("ابعت كود جديد")}</button>
       </div>
     </form>}
 
     {googleEnabled && <>
       <div className={styles.separator}><span>{tr("أو")}</span></div>
-      <button className={styles.googleButton} type="button" onClick={() => void signInWithGoogle()} disabled={busy}>
+      <button className={styles.googleButton} type="button" onClick={() => void signInWithGoogle()} disabled={!hydrated || busy}>
         <span className={styles.googleMark} aria-hidden="true">G</span>{tr("المتابعة باستخدام Google")} </button>
     </>}
     <p className={styles.status} role="status" aria-live="polite">{tr(message)}</p>

@@ -2,12 +2,12 @@
 import { useCopy } from '@/i18n/client';
 
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { SaleSku } from "@/lib/sale-skus";
 import { CartAddButton } from "../../cart-add-button";
 
 const faces = [
-  { id: "review", label: "تقييم Google", variants: ["أسود", "أبيض"] },
+  { id: "review", label: "تقييم Google", variants: ["أبيض"] },
   { id: "instapay", label: "الدفع · InstaPay", variants: ["InstaPay"] },
   { id: "vodafone", label: "الدفع · Vodafone Cash", variants: ["Vodafone Cash"] },
   { id: "instagram", label: "سوشيال · Instagram", variants: ["Instagram"] },
@@ -19,10 +19,12 @@ const faces = [
 export function StandOptions({ skus }: { skus: SaleSku[] }) {
   const tr = useCopy();
 
+  const [hydrated, setHydrated] = useState(false);
   const [face, setFace] = useState(faces[0].id);
-  const [variant, setVariant] = useState("أسود");
+  const [variant, setVariant] = useState(faces[0].variants[0]);
   const [design, setDesign] = useState("T0");
   const [preview, setPreview] = useState<{ businessName: string; destinationUrl: string; fileName: string } | null>(null);
+  useEffect(() => setHydrated(true), []);
   const selected = faces.find((item) => item.id === face) ?? faces[0];
   const saleSku = skus.find((sku) =>
     sku.options.face === face && sku.options.variant === variant && sku.options.design === design
@@ -42,6 +44,7 @@ export function StandOptions({ skus }: { skus: SaleSku[] }) {
   return <section className="stand-options" id="stand-options">
     <div className="section-kicker"><span>05</span>  {tr("اختار تفاصيل الستاند")}</div>
     <div className="options-panel">
+      <fieldset className="stand-option-controls" data-testid="stand-option-controls" disabled={!hydrated}>
       <div className="option-field"><label htmlFor="stand-face">{tr("الوجه المطبوع")}</label><select id="stand-face" value={face} onChange={(event) => { const nextFace = faces.find((item) => item.id === event.target.value) ?? faces[0]; setFace(nextFace.id); setVariant(nextFace.variants[0]); setPreview(null); }}>{faces.map((item) => <option value={item.id} key={item.id}>{tr(item.label)}</option>)}</select><small>{tr("الوجه يحدد الوظيفة؛ رابط QR وNFC يفضل تابعًا للوظيفة المطبوعة.")}</small></div>
       {selected.variants.length > 1 && <div className="option-field"><label htmlFor="stand-variant">{tr("لون الوجه")}</label><select id="stand-variant" value={variant} onChange={(event) => setVariant(event.target.value)}>{selected.variants.map((choice) => <option key={choice} value={choice}>{tr(choice)}</option>)}</select></div>}
       <fieldset className="design-choice"><legend>{tr("طريقة التصميم والتجهيز")}</legend><label><input type="radio" name="stand-design" checked={design === "T0"} onChange={() => { setDesign("T0"); setPreview(null); }} /><span><b>{tr("T0 · قالب جاهز")}</b><small>{tr("تفعّل القطعة وتضبط وجهتها وتكتب رابط CliQo على NFC بنفسك.")}</small></span></label><label><input type="radio" name="stand-design" checked={design === "T1"} onChange={() => { setDesign("T1"); setPreview(null); }} /><span><b>{tr("T1 · ملفك الجاهز")}</b><small>{tr("ترفع تصميمك ورابط وجهتك؛ CliQo تكتب NFC وتختبره قبل الشحن.")}</small></span></label><label><input type="radio" name="stand-design" checked={design === "T2"} onChange={() => { setDesign("T2"); setPreview(null); }} /><span><b>{tr("T2 · تصميم من CliQo")}</b><small>{tr("تشاركنا الفكرة والرابط، ونجهز التصميم للاعتماد قبل الطباعة.")}</small></span></label></fieldset>
@@ -54,6 +57,7 @@ export function StandOptions({ skus }: { skus: SaleSku[] }) {
       </form>}
       {design === "T0" && <p className="template-note"><b>{tr("بعد استلام القالب:")}</b>  {tr("تمسح QR لتحديد القطعة، تثبت ملكيتك بكود خاص، ثم تتبع PDF أو الفيديو لكتابة رابط القطعة على NFC واختباره.")}</p>}
       {saleSku && <div className="sale-option"><strong>{saleSku.priceEgp.toLocaleString(tr.numberLocale)}  {tr("ج.م")}</strong>{design === "T0" ? <CartAddButton skuId={saleSku.id} slug="stand" name={saleSku.displayName} priceEgp={saleSku.priceEgp} choices={[selected.label, variant, design]} optionValues={{face, variant, design}} /> : preview ? <CartAddButton skuId={saleSku.id} slug="stand" name={saleSku.displayName} priceEgp={saleSku.priceEgp} choices={[selected.label, variant, design]} optionValues={{face, variant, design}} customDesign={{ businessName: preview.businessName, destinationUrl: preview.destinationUrl }} /> : <small>{tr("اكتب اسم النشاط والرابط واعمل معاينة لإضافة التصميم المخصص للسلة.")}</small>}</div>}
+      </fieldset>
     </div>
   </section>;
 }
