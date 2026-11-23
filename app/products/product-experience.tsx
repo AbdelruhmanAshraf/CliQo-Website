@@ -312,7 +312,7 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
 
           <div className="store-buy-box shop-buy-box">
             {saleSku && (tier === 'T0' || custom) ? (
-              <CartAddButton skuId={saleSku.id} slug={product.slug} name={saleSku.displayName} priceEgp={saleSku.priceEgp}
+              <CartAddButton key={saleSku.id} skuId={saleSku.id} slug={product.slug} name={saleSku.displayName} priceEgp={saleSku.priceEgp}
                 choices={active ? [active.nameAr, active.variant, tier] : [tier]}
                 optionValues={active ? { face: active.face, variant: active.variant, design: tier } : { design: tier }}
                 customDesign={tier !== 'T0' && custom ? custom : undefined} />

@@ -7,18 +7,21 @@ import { useCopy } from '@/i18n/client';
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { addOrderNote, changeLineStatus, changeOrderStatus } from "./actions";
+import { addOrderNote, changeLineStatus, changeOrderStatus, setOrderArchived } from "./actions";
 import { lineStatusLabels, orderStatusLabels, paymentAttemptLabels, paymentStateLabels, type LineStatus, type OrderRow, type OrderStatus } from "../data";
 
 const orderStatuses = Object.entries(orderStatusLabels) as [OrderStatus, string][];
 const lineStatuses = Object.entries(lineStatusLabels) as [LineStatus, string][];
 
 
-export function OrdersWorkspace({ orders, canEdit, designerNumber, statusCounts, dailyCounts, initialQuery = '', currentPage, totalPages, totalMatches }: { orders: OrderRow[]; canEdit: boolean; designerNumber: string | null; statusCounts: Record<string,number>; dailyCounts: {day:string;total:number}[]; initialQuery?: string; currentPage: number; totalPages: number; totalMatches: number }) {
+export function OrdersWorkspace({ orders, canEdit, archived, canArchive, designerNumber, statusCounts, dailyCounts, initialQuery = '', currentPage, totalPages, totalMatches }: { orders: OrderRow[]; canEdit: boolean; archived: boolean; canArchive: boolean; designerNumber: string | null; statusCounts: Record<string,number>; dailyCounts: {day:string;total:number}[]; initialQuery?: string; currentPage: number; totalPages: number; totalMatches: number }) {
   const tr = useCopy();
 
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
+  useEffect(() => setQuery(initialQuery), [initialQuery]);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [archivePrompt, setArchivePrompt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | OrderStatus>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const details = useRef<HTMLDivElement>(null);
@@ -27,7 +30,7 @@ export function OrdersWorkspace({ orders, canEdit, designerNumber, statusCounts,
   const [notice, setNotice] = useState("");
   const [pending, startTransition] = useTransition();
   const visible = useMemo(() => orders.filter((order) => filter === "all" || order.status === filter), [orders, filter]);
-  const pageHref = (page: number) => `/cliqo-control/orders?${new URLSearchParams({ ...(initialQuery ? { q: initialQuery } : {}), page: String(page) })}`;
+  const pageHref = (page: number) => `/cliqo-control/orders?${new URLSearchParams({ ...(initialQuery ? { q: initialQuery } : {}), ...(archived ? {view: "archive"} : {}), page: String(page) })}`;
   function save(action: () => Promise<{ ok: boolean; message: string }>, clearDraft = false) {
     setNotice("");
     startTransition(async () => {
@@ -39,28 +42,44 @@ export function OrdersWorkspace({ orders, canEdit, designerNumber, statusCounts,
     });
   }
   return <section className="ops-content">
-    <div className="ops-heading"><div><p className="ops-eyebrow">{tr("نظرة عامة على المتجر")}</p><h1>{tr("الطلبات")} <span className="count-pill">{totalMatches}</span></h1><p>{tr("كل الطلبات، مع بحث في السجل الكامل وصفحات واضحة.")}</p></div></div>
+    <div className="ops-heading"><div><h1>{tr(archived ? "أرشيف الطلبات" : "الطلبات")} <span className="count-pill">{totalMatches}</span></h1></div></div>
     {notice && <div role="status" className="inline-feedback">{tr(notice)}<button onClick={() => setNotice("")} aria-label={tr("إغلاق")}>×</button></div>}
-    <div className="ops-metrics order-metrics">
-      <article><span>{tr("كل الطلبات")}</span><strong>{Object.values(statusCounts).reduce((a,b)=>a+b,0)}</strong><small>{tr("في السجل الكامل")}</small></article>
-      <article><span>{tr("تحتاج متابعة")}</span><strong>{["new", "confirmed", "awaiting_design", "in_production", "quality_check"].reduce((sum,state)=>sum+(statusCounts[state]??0),0)}</strong><small>{tr("لم تجهز للشحن")}</small></article>
-      <article><span>{tr("جاهزة للشحن")}</span><strong>{statusCounts.ready_to_ship??0}</strong><small>{tr("بانتظار شركة الشحن")}</small></article>
-      <article><span>{tr("تم التسليم")}</span><strong>{statusCounts.delivered??0}</strong><small>{tr("من كل الطلبات")}</small></article>
-    </div>
     <div className="orders-panel">
-      <div className="orders-toolbar"><div className="filter-tabs" role="group" aria-label={tr("فلترة حسب الحالة")}>
-        {(["all", "new", "in_production", "ready_to_ship", "shipped"] as const).map((key) => <button key={key} aria-pressed={filter === key} className={filter === key ? "selected" : ""} onClick={() => setFilter(key)}>{key === "all" ? tr("كل الطلبات") : tr(orderStatusLabels[key])}</button>)}
-      </div><form className="orders-search-form" method="get"><label className="search-field"><span aria-hidden="true">⌕</span><input name="q" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tr("ابحث برقم الطلب أو العميل أو الهاتف")} aria-label={tr("ابحث برقم الطلب أو العميل أو الهاتف")} /></label><button type="submit">{tr("بحث")}</button></form></div>
+      <div className="orders-toolbar kanban-toolbar">
+        <form className="orders-search-form" method="get">
+          {archived && <input type="hidden" name="view" value="archive" />}
+          <label className="search-field"><input name="q" value={query} onChange={event => setQuery(event.target.value)} placeholder={tr("ابحث برقم الطلب أو العميل أو الهاتف")} aria-label={tr("ابحث برقم الطلب أو العميل أو الهاتف")} /></label>
+          <button type="submit">{tr("بحث")}</button>
+        </form>
+        <label className="kanban-filter">
+          {tr("فلتر الحالات")}
+          <select value={filter} onChange={event => {setFilter(event.target.value as OrderStatus | "all"); setExpanded(null);}}>
+            <option value="all">{tr("كل الطلبات")}</option>
+            {orderStatuses.map(([key, label]) => <option key={key} value={key}>{tr(label)}</option>)}
+          </select>
+        </label>
+        <Link className="export-button" href={archived ? "/cliqo-control/orders" : "/cliqo-control/orders?view=archive"}>{tr(archived ? "لوحة الطلبات" : "الأرشيف")}</Link>
+      </div>
       {visible.filter((order) => order.id === expanded).map((order) => <div className="order-detail" key={order.id} ref={details} tabIndex={-1} aria-label={tr("تفاصيل الطلب")}>
         <div className="detail-heading"><div><span>{tr("تفاصيل الطلب")}</span><strong>{order.reference}</strong></div><div className="order-detail-end"><span className="detail-location">{order.city}</span>{canEdit && <select className="order-detail-state" aria-label={tr("حالة الطلب")} value={order.status} disabled={pending}
-          onChange={(event) => save(() => changeOrderStatus(order.id, event.target.value as OrderStatus))}>
+          onChange={(event) => save(() => changeOrderStatus(order.id, event.target.value as OrderStatus, order.status))}>
           {orderStatuses.map(([key, label]) => <option key={key} value={key}>{tr(label)}</option>)}
         </select>}<button type="button" className="row-more" aria-label={tr("إغلاق")} onClick={() => setExpanded(null)}>×</button></div></div>
         {order.payment === "test" && <div className="test-order-strip">
           <div><strong>{tr("طلب اختبار")}</strong><small>{tr("بدون تحصيل أو شحن فعلي")}</small></div>
-          {canEdit && order.status === "new" && <button className="save-note" type="button" disabled={pending}
-            onClick={() => save(() => changeOrderStatus(order.id, "confirmed"))}>{tr("أكّد طلب الاختبار يدويًا")}</button>}
         </div>}
+        <p className="kanban-contact"><strong>{order.customer}</strong> · <bdi>{order.phone}</bdi> · {tr.date(order.createdAt)}</p>
+        {order.payment !== "test" && <p className="kanban-contact">{tr(order.payment === "cod" ? "عند الاستلام" : "بطاقة")} · {tr(paymentStateLabels[order.paymentState] ?? order.paymentState)}{order.paymentAttempt && <> · {tr(paymentAttemptLabels[order.paymentAttempt] ?? order.paymentAttempt)}</>}</p>}
+        {canArchive && (archived || ["cancelled", "returned", "delivered"].includes(order.status)) && (
+          <div className="kanban-archive">
+            {archived ? <button className="export-button" disabled={pending} onClick={() => save(() => setOrderArchived(order.id, false))}>{tr("استرجع الطلب")}</button>
+              : archivePrompt === order.id ? <>
+                <span>{tr("الطلب هيتنقل للأرشيف وتقدر تسترجعه.")}</span>
+                <button className="export-button" disabled={pending} onClick={() => save(() => setOrderArchived(order.id, true))}>{tr("أكد حذف الطلب")}</button>
+                <button className="export-button" onClick={() => setArchivePrompt(null)}>{tr("تراجع")}</button>
+              </> : <button className="export-button" onClick={() => setArchivePrompt(order.id)}>{tr("احذف من اللوحة")}</button>}
+          </div>
+        )}
         <div className="line-list">{order.lines.map((line) => {
           const tier = line.design?.tier;
           const heading = tier === "T2" ? tr("تصميم من CliQo") : tier === "T1" ? tr("تصميم العميل") : tr("قالب جاهز");
@@ -97,7 +116,7 @@ export function OrdersWorkspace({ orders, canEdit, designerNumber, statusCounts,
                 {tier !== "T2" && <small className="order-workflow-stock">{line.stockUnits
                   ? tr("مخصّص من المخزون: {value0} من {value1}", { value0: line.stockUnits, value1: line.qty })
                   : tr("أكّد الطلب لتخصيص القطع من المخزون.")}</small>}
-                {(canDownload || whatsapp) && <div className="order-workflow-actions">
+                {(canDownload || whatsapp || Boolean(order.payment === "test" && line.testItemIds?.length)) && <div className="order-workflow-actions">
                   {canDownload && <a className="export-button" href={archive} download>{tier === "T2" ? tr("نزّل طلب التصميم ومرفقاته") : tr("نزّل ملفات المصنع")}</a>}
                   {order.payment === "test" && line.testItemIds?.map((id, index) =>
                     <Link className="export-button" key={id} href={`/cliqo-control/items/${id}`}>{tr("قطعة الاختبار {value0}",{value0:index+1})}</Link>)}
@@ -116,22 +135,38 @@ export function OrdersWorkspace({ orders, canEdit, designerNumber, statusCounts,
           </article>;
         })}</div>
         {order.notes.length > 0 && <div className="order-notes"><strong>{tr("ملاحظات الإدارة")}</strong>{order.notes.map((note) => <p key={note.id}>{note.body}<small>{tr.date(note.createdAt)}</small></p>)}</div>}
-        <label className="note-field">{tr("ملاحظة داخلية")}<textarea value={draft} maxLength={2000} placeholder={tr("أضف ملاحظة للمتابعة...")} onChange={(event) => setDraft(event.target.value)} /></label>
-        <button className="save-note" disabled={pending || !draft.trim()} onClick={() => save(() => addOrderNote(order.id, draft), true)}>{tr("حفظ الملاحظة")}</button>
+        {!archived && <><label className="note-field">{tr("ملاحظة داخلية")}<textarea value={draft} maxLength={2000} placeholder={tr("أضف ملاحظة للمتابعة...")} onChange={(event) => setDraft(event.target.value)} /></label>
+        <button className="save-note" disabled={pending || !draft.trim()} onClick={() => save(() => addOrderNote(order.id, draft), true)}>{tr("حفظ الملاحظة")}</button></>}
       </div>)}
-      <div className="table-scroll"><table className="orders-table"><thead><tr><th>{tr("رقم الطلب")}</th><th>{tr("العميل")}</th><th>{tr("التاريخ")}</th><th>{tr("المنتجات")}</th><th>{tr("الدفع")}</th><th>{tr("الإجمالي")}</th><th>{tr("الحالة")}</th><th>{tr("تفاصيل")}</th></tr></thead><tbody>
-        {visible.map((order) => <tr key={order.id} className={expanded === order.id ? "row-expanded" : ""}>
-          <td><button className="order-id" onClick={() => { setExpanded(expanded === order.id ? null : order.id); setDraft(""); }}>{order.reference}</button></td>
-          <td><strong>{order.customer}</strong><small dir="ltr">{order.phone}</small></td><td>{tr.date(order.createdAt)}</td>
-          <td>{order.lines.reduce((sum, line) => sum + line.qty, 0)}  {tr("قطع")}<small className="order-line-summary">{order.lines.slice(0, 2).map(line => snapshotLabel(tr, line.name)).join(tr("،"))}
-            {order.lines.length > 2 && <span> +{order.lines.length - 2}</span>}</small></td>
-          <td><span className={`pay-method ${order.payment}`}>{order.payment === "test" ? tr("طلب اختبار") : order.payment === "cod" ? tr("عند الاستلام") : tr("بطاقة")}</span><small>{order.payment === "test" ? tr("بدون تحصيل أو شحن فعلي") : tr(paymentStateLabels[order.paymentState] ?? order.paymentState)}</small>{order.payment === "card" && order.paymentAttempt && <small>{tr(paymentAttemptLabels[order.paymentAttempt] ?? order.paymentAttempt)}</small>}</td>
-          <td>{(order.totalMinor / 100).toLocaleString(tr.numberLocale)}  {tr("ج.م")}</td>
-          <td>{canEdit ? <select className="status-select" value={order.status} disabled={pending} aria-label={tr("حالة {value0}", {value0: order.reference})} onChange={(event) => save(() => changeOrderStatus(order.id, event.target.value as OrderStatus))}>{orderStatuses.map(([key, label]) => <option key={key} value={key}>{tr(label)}</option>)}</select> : tr(orderStatusLabels[order.status])}</td>
-          <td><button className="row-more" onClick={() => { setExpanded(expanded === order.id ? null : order.id); setDraft(""); }} aria-expanded={expanded === order.id} aria-label={tr("تفاصيل {value0}", {value0: order.reference})}>{expanded === order.id ? "⌃" : "⌄"}</button></td>
-        </tr>)}
-        {visible.length === 0 && <tr><td colSpan={8} className="empty-results">{orders.length ? tr("مفيش طلبات مطابقة للبحث.") : tr("لسه مفيش طلبات مسجلة.")}</td></tr>}
-      </tbody></table></div>
+      <div className="kanban-board" role="region" aria-label={tr("لوحة الطلبات")} tabIndex={0}>
+        {orderStatuses.filter(([key]) => filter === "all" || key === filter).map(([key, label]) => {
+          const cards = visible.filter(order => order.status === key);
+          return <section key={key} className="kanban-column" aria-label={tr(label)}
+            onDragOver={event => { if (canEdit && dragged && !pending) event.preventDefault(); }}
+            onDrop={event => {
+              event.preventDefault();
+              const order = visible.find(item => item.id === dragged);
+              setDragged(null);
+              if (canEdit && !pending && order && order.status !== key) save(() => changeOrderStatus(order.id, key, order.status));
+            }}>
+            <header><h2>{tr(label)}</h2><span>{cards.length}</span></header>
+            {cards.map(order => <article key={order.id} className="kanban-card"
+              draggable={canEdit && !pending}
+              onDragStart={event => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", order.reference); setDragged(order.id); }}
+              onDragEnd={() => setDragged(null)}>
+              <button className="kanban-open" type="button" aria-expanded={expanded === order.id} onClick={() => {
+                setExpanded(expanded === order.id ? null : order.id); setDraft(""); setArchivePrompt(null);
+              }}><bdi>{order.reference}</bdi><strong>{order.customer}</strong></button>
+              <span>{order.lines.reduce((sum, line) => sum + line.qty, 0)} {tr("قطعة")} · {order.payment === "test" ? tr("طلب اختبار") : `${(order.totalMinor / 100).toLocaleString(tr.numberLocale)} ${tr("ج.م")}`}</span>
+              {canEdit && <select className="status-select" value={order.status} disabled={pending} aria-label={tr("حالة {value0}", {value0: order.reference})}
+                onChange={event => save(() => changeOrderStatus(order.id, event.target.value as OrderStatus, order.status))}>
+                {orderStatuses.map(([state, name]) => <option key={state} value={state}>{tr(name)}</option>)}
+              </select>}
+            </article>)}
+            {!cards.length && <p>{tr("مفيش طلبات")}</p>}
+          </section>;
+        })}
+      </div>
       <footer className="table-footer"><span>{tr("عرض {value0} من {value1} طلب", { value0: visible.length, value1: totalMatches })} · {tr("صفحة {value0} من {value1}", { value0: currentPage, value1: totalPages })}</span><nav className="order-pagination" aria-label={tr("صفحات الطلبات")}>{currentPage>1&&<Link href={pageHref(currentPage-1)}>{tr("السابق")}</Link>}{currentPage<totalPages&&<Link href={pageHref(currentPage+1)}>{tr("التالي")}</Link>}</nav></footer>
     </div>
     <details className="order-insights"><summary>{tr("إحصائيات الطلبات")}</summary>

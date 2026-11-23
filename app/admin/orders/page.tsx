@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 40;
 const operations = ["owner", "admin", "operations", "fulfillment"];
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; testError?: string }> }) {
+export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; testError?: string; view?: string }> }) {
   const { supabase, staff } = await requireStaff();
   const params = await searchParams;
   const tr = await getCopy();
@@ -23,12 +23,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const requestedPage = Number(params.page ?? 1);
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const db = getDb();
-  const match = "where ($1 = '' or position($1 in lower(coalesce(order_reference,'') || ' ' || coalesce(customer_name_snapshot,'') || ' ' || coalesce(phone_snapshot,''))) > 0)";
-  const countResult = await db.query<{total: number}>(`select count(*)::int as total from public.orders ${match}`, [q]);
+  const archived = params.view === "archive";
+  const canArchive = staff.role === "owner" || staff.role === "admin";
+  const match = "where (archived_at is not null) = $2 and ($1 = '' or position($1 in lower(coalesce(order_reference,'') || ' ' || coalesce(customer_name_snapshot,'') || ' ' || coalesce(phone_snapshot,''))) > 0)";
+  const countResult = await db.query<{total: number}>(`select count(*)::int as total from public.orders ${match}`, [q, archived]);
   const total = countResult.rows[0]?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const current = Math.min(page, pages);
-  const idResult = await db.query<{id: string}>(`select id from public.orders ${match} order by created_at desc,id desc limit $2 offset $3`, [q, PAGE_SIZE, (current-1)*PAGE_SIZE]);
+  const idResult = await db.query<{id: string}>(`select id from public.orders ${match} order by created_at desc,id desc limit $3 offset $4`, [q, archived, PAGE_SIZE, (current-1)*PAGE_SIZE]);
   const selectedIds = idResult.rows.map(row=>row.id);
   const overview = await getDb().query<{ state: string; total: number }>(
     "select state::text,count(*)::int as total from public.orders where payment_method<>'test' group by state"
@@ -50,7 +52,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     "where order_id=any($1::uuid[]) order by order_id,attempt_number desc", [ids],
   ) : {rows: [] as {order_id: string; status: string}[]};
   const paymentAttemptByOrder = new Map(attemptsResult.rows.map((attempt) => [attempt.order_id, attempt.status]));
-  const canEdit = operations.includes(staff.role);
+  const canEdit = !archived && operations.includes(staff.role);
   const designerNumber = (process.env.CLIQO_DESIGNER_WHATSAPP ?? "").replace(/[+()\s-]/g, "");
   const [linesResult, notesResult, assignedResult] = ids.length ? await Promise.all([
     supabase.from("order_lines").select("id,order_id,product_name_snapshot,options_snapshot,quantity,state,design_business_name,design_request_url,design_brief").in("order_id", ids),
@@ -104,12 +106,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       notes: (notesResult.data ?? []).filter((note) => note.order_id === order.id).map((note) => ({ id: note.id, body: note.body, createdAt: note.created_at })),
     };
   });
-  return <AdminShell staffName={staff.display_name} staffRole={staff.role}>{staff.role === "owner" && testCheckoutEnabled() && <section className="test-store-control">
-    <div><h2>{tr("متجر الاختبار الخاص")}</h2><p>{tr("اعمل أوردر تجربة من نفس المتجر، وبعدها أكّده يدويًا هنا. التجربة تستخدم مخزونًا منفصلًا.")}</p>
+  return <AdminShell staffName={staff.display_name} staffRole={staff.role}>{!archived && staff.role === "owner" && testCheckoutEnabled() && <section className="test-store-control">
+    <div><h2>{tr("متجر الاختبار الخاص")}</h2><p>{tr("اعمل طلب تجربة بمخزون منفصل، وبعدها تابعه من لوحة الطلبات.")}</p>
       {params.testError && <p role="alert">{tr("تعذر فتح متجر الاختبار. راجع إن البيع العام مقفول وحاول تاني.")}</p>}
     </div>
     <form action="/cliqo-control/orders/test-store" method="post">
       <button className="save-note" type="submit">{tr("افتح المتجر للتجربة")}</button>
     </form>
-  </section>}<OrdersWorkspace orders={rows} canEdit={canEdit} designerNumber={canEdit && /^[1-9][0-9]{7,14}$/.test(designerNumber) ? designerNumber : null} statusCounts={Object.fromEntries(overview.rows.map(row => [row.state,row.total]))} dailyCounts={daily.rows} initialQuery={q} currentPage={current} totalPages={pages} totalMatches={total} /></AdminShell>;
+  </section>}<OrdersWorkspace key={archived ? "archive" : "board"} orders={rows} canEdit={canEdit} archived={archived} canArchive={canArchive} designerNumber={canEdit && /^[1-9][0-9]{7,14}$/.test(designerNumber) ? designerNumber : null} statusCounts={Object.fromEntries(overview.rows.map(row => [row.state,row.total]))} dailyCounts={daily.rows} initialQuery={q} currentPage={current} totalPages={pages} totalMatches={total} /></AdminShell>;
 }

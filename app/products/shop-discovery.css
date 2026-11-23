@@ -68,7 +68,7 @@
 .shop-home-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 20px; flex-wrap: wrap; margin-block-end: 20px; }
 .shop-home-heading h2 { margin: 0; font-size: clamp(25px, 3.2vw, 44px); line-height: 1.3; }
 .shop-home-heading > a { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; color: var(--color-text); font-size: 14px; text-decoration: underline; text-underline-offset: 4px; }
-.shop-category-grid, .shop-goal-grid, .shop-card-grid { display: grid; gap: 16px; }
+.shop-category-grid, .shop-goal-grid { display: grid; gap: 16px; }
 .shop-category-grid { grid-template-columns: 1.14fr 1fr 1fr; }
 .shop-category {
   position: relative;
@@ -257,7 +257,6 @@ html:has(.shop-filter-dialog[open]) { overflow: hidden; }
 .shop-filter-form footer { margin-top: 4px; }
 .shop-filter-apply { flex: 1; }
 
-.shop-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .shop-card {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -309,7 +308,6 @@ html:has(.shop-filter-dialog[open]) { overflow: hidden; }
   .campaign-home .shop-home-hero { margin-inline: clamp(12px, 2.9vw, 38px); }
 }
 @media (max-width: 1020px) {
-  .shop-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .shop-goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
@@ -321,7 +319,7 @@ html:has(.shop-filter-dialog[open]) { overflow: hidden; }
   .campaign-home .shop-home-featured { padding-block: 20px 15px; }
   .campaign-home .shop-home-uses { padding-block: 19px 40px; }
   .shop-home-heading { margin-block-end: 11px; }
-  .shop-goal-grid, .shop-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .shop-goal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .shop-category-grid {
     grid-template-columns: none;
     grid-auto-flow: column;
@@ -557,7 +555,6 @@ html:has(.shop-filter-dialog[open]) { overflow: hidden; }
 .shop-product-details a { display: inline-flex; min-height: 44px; align-items: center; text-decoration: underline; }
 
 @media (max-width: 850px) {
-  .store-product-main.shop-product-main { grid-template-columns: minmax(0, 1fr); gap: 17px; }
   .shop-product-stage { max-height: min(76vw, 370px); }
   .shop-product-info h1 { font-size: clamp(27px, 5.3vw, 39px); }
   .shop-photo-thumbnails button { width: 44px; height: 44px; }
@@ -570,4 +567,44 @@ html:has(.shop-filter-dialog[open]) { overflow: hidden; }
   .shop-setup-grid label span { display: flex; flex-wrap: wrap; gap: 4px 8px; }
   .shop-destination { gap: 8px; padding: 10px; }
   .shop-link-preview { min-width: 94px; }
+}
+
+/* Center the catalog and the complete product layout, including incomplete card rows. */
+.new-catalog.shop-catalog {
+  width: 100%;
+  box-sizing: border-box;
+  margin-inline: auto;
+}
+.shop-catalog-heading, .shop-catalog-note { text-align: center; }
+.shop-catalog .shop-family-tabs { justify-content: safe center; }
+.shop-card-grid {
+  --columns: 4;
+  --card-gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--card-gap);
+}
+.shop-card-grid > .shop-card {
+  flex: 0 0 calc((100% - (var(--columns) - 1) * var(--card-gap)) / var(--columns));
+  min-width: 0;
+  box-sizing: border-box;
+}
+.new-product-page > :is(.store-breadcrumb, .shop-product-main, .shop-product-details, .store-related-products) {
+  width: min(calc(100% - clamp(28px, 6vw, 88px)), 1220px);
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+.store-product-main.shop-product-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.shop-product-stage { margin-inline: auto; }
+.shop-product-stage img { object-position: center; }
+.shop-photo-thumbnails { justify-content: safe center; }
+@media (max-width: 1020px) { .shop-card-grid { --columns: 3; } }
+@media (max-width: 700px) { .shop-card-grid { --columns: 2; --card-gap: 10px; } }
+@media (max-width: 850px) {
+  .store-product-main.shop-product-main { grid-template-columns: minmax(0, 1fr); max-width: 540px; gap: 17px; }
+  .shop-product-gallery, .shop-product-info { width: 100%; margin-inline: auto; }
+  .shop-product-info h1, .shop-product-description { text-align: center; }
+  .shop-product-status, .shop-product-info .shop-design-types { justify-content: center; }
 }

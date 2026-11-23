@@ -63,3 +63,55 @@
 .test-store-control h2, .test-store-control p { margin: 0; }
 .test-order-strip { margin-block-end: 12px; }
 .test-order-strip small { display: block; }
+
+/* Shared admin shell and order board */
+.ops-layout .ops-sidebar nav a { font-size: 13px; }
+.ops-layout .ops-sidebar nav a.active { background: #fff0e9; color: #612004; }
+.ops-layout .ops-content { padding-inline: clamp(16px, 3vw, 36px); }
+.ops-layout .ops-heading > div > p:last-child { font-size: 13px; color: #595959; }
+.kanban-toolbar { flex-wrap: wrap; justify-content: flex-start; }
+.kanban-toolbar .orders-search-form { flex: 1 1 250px; }
+.kanban-toolbar .orders-search-form .search-field { width: 100%; }
+.kanban-filter { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.kanban-filter select, .kanban-card .status-select {
+  min-height: 40px; padding: 6px 10px; color: #292929; background: white;
+  border: 1px solid #dedede; border-radius: 8px; font: inherit;
+}
+.kanban-board {
+  display: flex; align-items: stretch; gap: 12px; padding: 16px;
+  overflow-x: auto; scroll-snap-type: x proximity;
+}
+.kanban-column {
+  flex: 0 0 min(245px, 85%); min-width: 0; min-height: 205px; padding: 10px;
+  background: #f5f5f5; border: 1px solid #e8e8e8; border-radius: 10px; scroll-snap-align: start;
+}
+.kanban-column:only-child { flex-basis: min(100%, 400px); }
+.kanban-column header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 3px 9px; }
+.kanban-column h2 { font-size: 14px; margin: 0; }
+.kanban-column header span, .kanban-column > p { font-size: 12px; color: #5e5e5e; }
+.kanban-column > p { margin: 8px 3px; }
+.kanban-card {
+  display: grid; gap: 8px; padding: 11px; margin-block-end: 8px; color: #333;
+  border: 1px solid #dedede; border-radius: 8px; background: white; font-size: 13px;
+}
+.kanban-card[draggable=true] { cursor: grab; }
+.kanban-card .status-select { max-width: 100%; cursor: pointer; }
+.kanban-open {
+  display: grid; gap: 4px; min-height: 44px; width: 100%; border: 0; padding: 0;
+  text-align: start; overflow-wrap: anywhere; background: none; color: #151515; font: inherit; cursor: pointer;
+}
+.kanban-open bdi { font-weight: 700; color: #8b310d; }
+.kanban-contact { font-size: 13px; margin-block: 6px 12px; overflow-wrap: anywhere; }
+.kanban-archive { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block-end: 12px; }
+.kanban-archive button { color: #8b310d; }
+@media (max-width: 700px) {
+  .kanban-board { padding: 10px; }
+  .ops-layout .ops-sidebar nav { display: flex; overflow-x: auto; }
+  .ops-layout .ops-sidebar nav a { flex: none; min-height: 44px; }
+  .kanban-toolbar { flex-direction: row; }
+  .kanban-toolbar .orders-search-form { flex-basis: 100%; }
+  .kanban-toolbar > a { align-self: center; }
+}
+
+body:has(.ops-layout) > .cliqo-test-banner { display: none; }
+.ops-main > .test-store-control { margin: 16px clamp(16px, 3vw, 36px) 0; }
