@@ -32,14 +32,6 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const current = Math.min(page, pages);
   const idResult = await db.query<{id: string}>(`select id from public.orders ${match} order by created_at desc,id desc limit $3 offset $4`, [q, archived, PAGE_SIZE, (current-1)*PAGE_SIZE]);
   const selectedIds = idResult.rows.map(row=>row.id);
-  const overview = await getDb().query<{ state: string; total: number }>(
-    "select state::text,count(*)::int as total from public.orders where payment_method<>'test' group by state"
-  );
-  const daily = await db.query<{day: string; total: number}>(`select days.day::date::text as day,count(o.id)::int as total
-    from generate_series((now() at time zone 'Africa/Cairo')::date - 13,
-      (now() at time zone 'Africa/Cairo')::date,interval '1 day') as days(day)
-    left join public.orders o on o.payment_method<>'test' and (o.created_at at time zone 'Africa/Cairo')::date=days.day::date
-    group by days.day order by days.day`);
   const { data: orders, error } = selectedIds.length ? await supabase.from("orders")
     .select("id,order_reference,customer_name_snapshot,phone_snapshot,shipping_address,created_at,payment_method,payment_state,total_minor,state")
     .in("id", selectedIds) : { data: [], error: null };
@@ -112,6 +104,6 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
     </div>
     <form action="/cliqo-control/orders/test-store" method="post">
       <button className="save-note" type="submit">{tr("افتح المتجر للتجربة")}</button>
-    </form>
-  </section>}<OrdersWorkspace key={archived ? "archive" : "board"} orders={rows} canEdit={canEdit} archived={archived} canArchive={canArchive} designerNumber={canEdit && /^[1-9][0-9]{7,14}$/.test(designerNumber) ? designerNumber : null} statusCounts={Object.fromEntries(overview.rows.map(row => [row.state,row.total]))} dailyCounts={daily.rows} initialQuery={q} currentPage={current} totalPages={pages} totalMatches={total} /></AdminShell>;
+  </form>
+  </section>}<OrdersWorkspace key={archived ? "archive" : "board"} orders={rows} canEdit={canEdit} archived={archived} canArchive={canArchive} canDelete={staff.role === "owner"} designerNumber={canEdit && /^[1-9][0-9]{7,14}$/.test(designerNumber) ? designerNumber : null} initialQuery={q} currentPage={current} totalPages={pages} totalMatches={total} /></AdminShell>;
 }

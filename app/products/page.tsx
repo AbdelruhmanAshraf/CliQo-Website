@@ -57,15 +57,18 @@ function CatalogCard({ card, skus, ar }: { card: DesignCard; skus: SaleSku[]; ar
   const design = designs[0];
   const family = ar ? product.name : product.nameEn;
   const designName = ar ? design?.nameAr : design?.nameEn;
-  const title = designName?.startsWith('كارت') || designName?.endsWith('Card')
+  const title = design?.face === 'default' || designName === family
+    ? family
+    : designName?.startsWith('كارت') || designName?.endsWith('Card')
     ? designName
     : [family, designName].filter(Boolean).join(' · ');
   const image = design?.images[0]?.src ?? product.images[0];
   const minimumPrice = skus.reduce<number | undefined>((price, sku) => {
     const ready = !sku.options.design || sku.options.design === 'T0';
-    const validDesign = !design || designs.some(item =>
-      (!sku.options.face || sku.options.face === item.face) && (!sku.options.variant || sku.options.variant === item.variant)
-    );
+    const validDesign = !design || !sku.options.face || (design.face === 'default'
+      ? sku.options.face === 'default'
+      : designs.some(item => sku.options.face === item.face
+        && (!sku.options.variant || sku.options.variant === item.variant)));
     return ready && validDesign ? Math.min(price ?? sku.priceEgp, sku.priceEgp) : price;
   }, undefined);
   const format = (amount: number) => `${new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG').format(amount)} ${t('ج.م', 'EGP')}`;

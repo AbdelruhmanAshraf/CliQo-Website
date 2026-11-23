@@ -1,6 +1,7 @@
 import {getCopy} from "@/i18n/server";
 import type { Metadata } from "next";
 import "./admin.css";
+import "./admin-refresh.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tr = await getCopy();

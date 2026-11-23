@@ -27,6 +27,7 @@ const users = [];
 const output = "output/product-order-qa";
 const orderIds = [];
 const storagePaths = [];
+const adSpendCampaigns = [];
 await mkdir(output,{recursive:true});
 
 function totp(secret) {
@@ -105,9 +106,9 @@ async function board(page,order) {
 }
 
 async function move(page,order,state) {
-  await (await board(page,order)).locator("select").selectOption(state);
-  await page.waitForFunction(({ref,state}) => [...document.querySelectorAll(".kanban-card")]
-    .some(card => card.textContent.includes(ref) && card.querySelector("select")?.value === state), {ref:order.reference,state});
+  const card=await board(page,order),target=page.locator(`.kanban-column[data-order-status="${state}"]`);
+  await card.dragTo(target.locator("header"));
+  await page.waitForFunction(({ref,state}) => document.querySelector(`.kanban-column[data-order-status="${state}"]`)?.textContent.includes(ref), {ref:order.reference,state});
   const {rows:[row]}=await db.query("select state from public.orders where id=$1",[order.id]);
   assert.equal(row.state,state);
 }
@@ -125,6 +126,30 @@ try {
   const {rows:[config]} = await db.query("select sales_enabled,cod_enabled,card_enabled from app_private.checkout_config where id");
   assert.deepEqual(config,{sales_enabled:false,cod_enabled:false,card_enabled:false});
   const owner=await createAccount("owner");
+  await owner.page.goto(base+"/cliqo-control");await owner.page.locator(".overview-page").waitFor();
+  assert.equal(await owner.page.locator(".overview-export").count(),1);
+  const campaign="QA " + randomUUID();adSpendCampaigns.push(campaign);
+  await owner.page.locator('.overview-spend-form input[name="campaign"]').fill(campaign);
+  await owner.page.locator('.overview-spend-form input[name="amount"]').fill("12.34");
+  await owner.page.locator('.overview-spend-form button[type="submit"]').click();
+  await owner.page.locator(".overview-spend-notice").waitFor();
+  const spend=(await db.query("select id,amount_minor from app_private.admin_ad_spend where campaign=$1",[campaign])).rows[0];assert.equal(spend.amount_minor,1234);
+  const report=await owner.context.request.get(base+"/api/admin/sales-export?period=7d");assert.equal(report.status(),200);
+  const workbook=unzipSync(await report.body());assert.ok(strFromU8(workbook["xl/workbook.xml"]).includes('name="الطلبات"'));
+  assert.equal(Object.keys(workbook).filter(name=>/^xl\/worksheets\/sheet\d+\.xml$/.test(name)).length,4);
+  assert.ok(strFromU8(workbook["xl/worksheets/sheet4.xml"]).includes(campaign));
+  console.log("PASS overview records manual ad spend and Excel export contains four report sheets");
+  const inboxChecks=[];
+  const mailboxesConfigured=["CLIQO_MAIL_INFO_PASSWORD","CLIQO_MAIL_CONTACTS_PASSWORD","CLIQO_MAIL_ADMIN_PASSWORD"].every(name=>Boolean(envFile[name])&&!envFile[name].startsWith("replace-with-"));
+  const firstInbox=owner.page.waitForResponse(response=>response.url().includes("/api/admin/mail?box=info")&&response.request().method()==="GET");
+  await owner.page.goto(base+"/cliqo-control/email");await owner.page.locator(".admin-mail-workspace").waitFor();
+  const infoInbox=await firstInbox;inboxChecks.push(["info",infoInbox]);
+  const tabs=owner.page.getByRole("tab");assert.equal(await tabs.count(),3);
+  for(const [index,box] of [[1,"contacts"],[2,"admin"]]){const response=owner.page.waitForResponse(candidate=>candidate.url().includes(`/api/admin/mail?box=${box}`)&&candidate.request().method()==="GET");await tabs.nth(index).click();inboxChecks.push([box,await response]);}
+  for(const [box,response] of inboxChecks){if(mailboxesConfigured){assert.equal(response.status(),200,`mailbox ${box}`);const payload=await response.json();assert.ok(Array.isArray(payload.messages));assert.equal(typeof payload.total,"number");}else assert.equal(response.status(),503,`mailbox ${box} reports unavailable without local credentials`);}
+  const mailboxReport=await owner.context.request.get(base+"/api/admin/mail/report");if(mailboxesConfigured){assert.equal(mailboxReport.status(),200);const mailboxCsv=await mailboxReport.text();for(const address of ["info@cliqoeg.com","contacts@cliqoeg.com","admin@cliqoeg.com"])assert.ok(mailboxCsv.includes(address));}else assert.equal(mailboxReport.status(),503);
+  if(!mailboxesConfigured)await owner.page.locator(".admin-mail-notice").waitFor();
+  console.log(mailboxesConfigured?"PASS read-only inbox checks for all three mailboxes and CSV report; no message sent":"PASS all three inboxes show a graceful unavailable state; local mailbox credentials are not configured; no message sent");
   const buyer=await createAccount();
   const visitor=await browser.newContext();
 
@@ -272,14 +297,10 @@ try {
   const closed=await createOrder(buyer.context,[{sku_id:cart[0].skuId,quantity:1}]);
   await move(owner.page,closed,"cancelled");
   await owner.page.locator(".kanban-open").click();
-  await owner.page.getByRole("button",{name:/احذف من اللوحة|Remove from board/}).click();
-  await owner.page.getByRole("button",{name:/أكد حذف الطلب|Confirm removal/}).click();
+  await owner.page.getByRole("button",{name:/حذف الطلب الملغي|Delete cancelled order/}).click();
+  await owner.page.getByRole("button",{name:/احذف نهائيًا|Delete permanently/}).click();
   await owner.page.locator(".kanban-card").waitFor({state:"detached"});
-  await owner.page.goto(base+"/cliqo-control/orders?view=archive&q="+closed.reference);
-  await owner.page.locator(".kanban-open").click();
-  await owner.page.getByRole("button",{name:/استرجع الطلب|Restore order/}).click();
-  await owner.page.locator(".kanban-card").waitFor({state:"detached"});
-  assert.equal((await db.query("select archived_at from public.orders where id=$1",[closed.id])).rows[0].archived_at,null);
+  assert.equal((await db.query("select count(*)::int as count from public.orders where id=$1",[closed.id])).rows[0].count,0);
   await owner.page.setViewportSize({width:390,height:844});
   await board(owner.page,order);
   assert.equal(await owner.page.evaluate(()=>document.documentElement.scrollWidth),390);
@@ -291,9 +312,10 @@ try {
     console.log("PASS admin section",path || "/overview");
   }
   await writeFile(output+"/coverage.json",JSON.stringify(coverage,null,2));
-  console.log("PASS Kanban archive/restore and mobile overflow");
+  console.log("PASS Kanban drag/drop, permanent deletion of cancelled order and mobile overflow");
 } finally {
   await browser.close();
+  if(adSpendCampaigns.length)await db.query("delete from app_private.admin_ad_spend where campaign=any($1::text[])",[adSpendCampaigns]);
   if(storagePaths.length) await admin.storage.from("order-designs").remove(storagePaths);
   if(orderIds.length){
     await db.query("begin");

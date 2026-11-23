@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     where not s.checkout_test and (($3::uuid is not null and i.production_batch_id=$3::uuid) or
       ($3::uuid is null and (i.state = 'ready' or (i.state = 'unassigned' and i.production_planned_at is not null))
       and i.owner_user_id is null))
-      and f.family_key in ('stand', 'coaster', 'pvc-card')
+      and f.has_nfc_qr
       and ($1::uuid is null or i.sku_id = $1::uuid)
       and ($2::uuid is null or i.public_id > $2::uuid)
     order by i.public_id
@@ -72,14 +72,14 @@ export async function GET(request: Request) {
       const candidate = activationCodeForPrint(row.public_id, Number(row.print_nonce));
       if (row.token_hash !== activationHash(candidate)) return new Response("كود التفعيل لا يطابق سجل القطعة. راجع المخزون قبل الطباعة.", { status: 409 });
     }
-    const folder = `${String(index + 1).padStart(2, "0")}-${shortId}`;
+    const pieceFolder = `${String(index + 1).padStart(2, "0")}-${shortId}`;
+    const folder = batchId ? `${row.family_key}/${row.sku_code}/${pieceFolder}` : pieceFolder;
     const filename = `${target.preview ? "TEST-" : ""}CLIQO-QR-${row.public_id}.svg`;
     const template = getPrintTemplate(row.family_key, row.face, row.variant, row.design);
     if (!batchId) files[`qr/${filename}`] = strToU8(await createSmartItemQrSvg(row.public_id, origin, row.face,
       template?.qr.style));
     let printFilename = "";
     let pngFilename = "";
-    if (batchId && !template) return new Response("قالب الدفعة غير موجود. لم يتم تصدير دفعة ناقصة.", { status: 409 });
     if (template) {
       const templateKey = JSON.stringify(template);
       let loaded = loadedTemplates.get(templateKey);
@@ -88,6 +88,7 @@ export async function GET(request: Request) {
       const svg = await createSmartItemPrintSvg(row.public_id, origin, row.face, loaded, undefined, shortId);
       if (!batchId) files[`print/${printFilename}`] = strToU8(svg);
       if (batchId) {
+        files[`${folder}/03-qr.svg`] = strToU8(await createSmartItemQrSvg(row.public_id, origin, row.face, template.qr.style));
         if (template.frontFile) {
           const artworkKey = JSON.stringify([template.frontFile, template.widthMm, template.heightMm]);
           let front = loadedArtworks.get(artworkKey);
@@ -96,19 +97,22 @@ export async function GET(request: Request) {
             loadedArtworks.set(artworkKey, front);
           }
           const frontSvg = createPrintArtworkSvg(front);
-          files[`${folder}/الوجه.svg`] = strToU8(frontSvg);
-          files[`${folder}/الوجه.png`] = await createSmartItemPrintPng(frontSvg, front);
-          files[`${folder}/الظهر-QR-ID.svg`] = strToU8(svg);
-          files[`${folder}/الظهر-QR-ID.png`] = await createSmartItemPrintPng(svg, loaded);
+          files[`${folder}/01-الوجه.svg`] = strToU8(frontSvg);
+          files[`${folder}/01-الوجه.png`] = await createSmartItemPrintPng(frontSvg, front);
+          files[`${folder}/02-الظهر-QR-ID.svg`] = strToU8(svg);
+          files[`${folder}/02-الظهر-QR-ID.png`] = await createSmartItemPrintPng(svg, loaded);
         } else {
-          files[`${folder}/الوجه.svg`] = strToU8(svg);
-          files[`${folder}/الوجه.png`] = await createSmartItemPrintPng(svg, loaded);
-          files[`${folder}/الظهر-حفر-ID.svg`] = strToU8(createSmartItemBackSvg(shortId, loaded));
+          files[`${folder}/01-الوجه.svg`] = strToU8(svg);
+          files[`${folder}/01-الوجه.png`] = await createSmartItemPrintPng(svg, loaded);
+          files[`${folder}/02-الظهر-حفر-ID.svg`] = strToU8(createSmartItemBackSvg(shortId, loaded));
         }
       }
     }
+    if (batchId && !template) {
+      files[`${folder}/03-qr.svg`] = strToU8(await createSmartItemQrSvg(row.public_id, origin, row.face));
+    }
     const publicUrl = `${origin}/s/${row.public_id}`;
-    if (batchId) files[`${folder}/بيانات-القطعة.txt`] = strToU8(
+    if (batchId) files[`${folder}/04-بيانات-القطعة.txt`] = strToU8(
       `رقم القطعة: ${shortId}\nالمعرف الكامل: ${row.public_id}\nرابط QR وNFC: ${publicUrl}\n\nهذا ملف المصنع. كود التفعيل الخاص لا يظهر هنا؛ يظهر للمالك بعد تسجيل استلام القطعة.\n`);
     manifest.push([shortId, row.sku_code, row.family_key, row.face, row.variant, row.design, row.public_id,
       publicUrl, batchId ?? "", row.state]);
@@ -121,7 +125,9 @@ export async function GET(request: Request) {
     next.searchParams.set("after", nextAfter);
     files["NEXT-BATCH.txt"] = strToU8(`More ready items exist. Download the next batch while signed in as owner:\n${next}\n`);
   }
-  const sideInstructions = hasTwoSidedCardArtwork
+  const sideInstructions = batchId && !hasPrintTemplate
+    ? "الدفعة لا تملك قالب تصميم طباعة بعد؛ يحتوي كل فولدر على QR ورابط القطعة وبياناتها فقط. اربط قالب التصميم قبل إرسالها للمصنع.\n"
+    : hasTwoSidedCardArtwork
     ? "للكروت: الوجه.png/svg هو التصميم الأمامي، والظهر-QR-ID.png/svg هو التصميم الخلفي وفيه QR ورقم القطعة القصير.\n"
     : hasPrintTemplate
       ? "كل فولدر في الدفعة يمثل قطعة واحدة: الوجه للطباعة، والظهر-حفر-ID يحتوي الرقم القصير للحفر.\n"

@@ -9,7 +9,8 @@ import { catalogDesigns } from "@/lib/catalog-designs";
 import { productPhotos } from "@/lib/product-photos";
 import { AdminShell } from "../admin-shell";
 import { ReceiveStockForm } from "./receive-stock-form";
-import { ResetStockButton } from "./reset-stock-button";
+import { BulkProductionOrder } from "./bulk-production-order";
+import { StockAdjustmentForm } from "./stock-adjustment-form";
 import { SkuManager } from "./sku-manager";
 import { SmartItemsRegistry } from "../items/registry";
 import './inventory-refine.css';
@@ -28,7 +29,7 @@ export default async function AdminInventoryPage() {
     supabase.from("product_skus").select("id,product_family_id,sku_code,display_name,options,state,price_minor,price_approved,sample_approved,fulfillment_approved").eq("checkout_test",false).order("sku_code").limit(200),
     supabase.from("inventory_balances").select("sku_id,on_hand,reserved,sku:product_skus!inner(checkout_test)").eq("sku.checkout_test",false).limit(100),
     supabase.from("inventory_movements").select("id,sku_id,kind,quantity,reason,created_at,sku:product_skus!inner(checkout_test)").eq("sku.checkout_test",false).order("created_at", { ascending: false }).limit(30),
-    supabase.from("product_families").select("id,family_key,name_ar,name_en").order("sort_order"),
+    supabase.from("product_families").select("id,family_key,name_ar,name_en,has_nfc_qr,catalog_deleted_at").order("sort_order"),
   ]);
   if (skusResult.error || balancesResult.error || movementsResult.error || familiesResult.error) throw new Error("تعذر تحميل المخزون.");
   const skus = skusResult.data ?? [];
@@ -56,7 +57,7 @@ export default async function AdminInventoryPage() {
       ? `${(printTemplate.widthMm/10).toLocaleString(tr.numberLocale)} × ${(printTemplate.heightMm/10).toLocaleString(tr.numberLocale)}`
       : family?.family_key === "stand" ? "١٠ × ١٥" : family?.family_key === "pvc-card" ? "٥٫٤ × ٨٫٥٦" : "١٢ × ١٢";
     const balance=(balancesResult.data??[]).find(item=>item.sku_id===sku.id);
-    return { ...sku, onHand:balance?.on_hand??0, reserved:balance?.reserved??0, inventoryImage, printTemplateFile, printTemplatePreview, printPreviewHasQr,
+    return { ...sku, hasNfcQr: family?.has_nfc_qr ?? false, onHand:balance?.on_hand??0, reserved:balance?.reserved??0, inventoryImage, printTemplateFile, printTemplatePreview, printPreviewHasQr,
       printTemplateRetired: printTemplate?.retired,
       printTemplateLabel: `${sku.display_name} · ${printSize} سم`,
       printBatches: batches.filter((batch) => batch.sku_id === sku.id).map((batch) => ({ batchId: batch.batch_id, quantity: batch.quantity, createdAt: batch.created_at.toISOString() })) };
@@ -77,20 +78,21 @@ export default async function AdminInventoryPage() {
   ) : { rows: [] as { sku_id: string; count: number }[] };
   const legacyPlannedBySku = Object.fromEntries(legacyPlannedResult.rows.map((row) => [row.sku_id, row.count]));
   const balances = new Map((balancesResult.data ?? []).map((balance) => [balance.sku_id, balance]));
-  const standFamilyId = familiesResult.data?.find((family) => family.family_key === "stand")?.id;
-  const coasterFamilyId = familiesResult.data?.find((family) => family.family_key === "coaster")?.id;
-  const standOnHand = printSkus.filter((sku) => sku.product_family_id === standFamilyId)
-    .reduce((sum, sku) => sum + sku.onHand, 0);
-  const coasterOnHand = printSkus.filter((sku) => sku.product_family_id === coasterFamilyId)
-    .reduce((sum, sku) => sum + sku.onHand, 0);
-  const plannedStandCount = printSkus.filter((sku) => sku.product_family_id === standFamilyId)
-    .reduce((sum, sku) => sum + (plannedBySku[sku.id] ?? 0), 0);
+  const productionSkus = printSkus.filter((sku) => sku.state !== "paused" && sku.hasNfcQr && !sku.printTemplateRetired).map((sku) => {
+    const family = familiesResult.data?.find((item) => item.id === sku.product_family_id);
+    return { id: sku.id, sku_code: sku.sku_code, name: snapshotLabel(tr, sku.display_name), hasTemplate: Boolean(sku.printTemplateFile),
+      category: tr(family?.name_ar ?? "غير مصنف"), options: sku.options as Record<string, string>, image: sku.inventoryImage };
+  });
+  const stockAdjustmentSkus = printSkus.filter((sku) => sku.onHand > sku.reserved).map((sku) => ({
+    id: sku.id, label: `${snapshotLabel(tr, sku.display_name)} · ${sku.sku_code} · ${sku.onHand - sku.reserved} ${tr("متاح")}`,
+  }));
   return <AdminShell staffName={staff.display_name} staffRole={staff.role}><section className="ops-content">
-    <div className="ops-heading"><div><p className="ops-eyebrow">{tr("المخزون والتجهيز")}</p><h1>{tr("المخزون")}</h1><p>{tr("اختار Stand أو Coaster أو Cards. كل نوع فيه أصنافه وكمياته وتفاصيله.")}</p></div><a className="export-button" href="/admin/inventory/factory-pdf">{tr("نزّل PDF المصنع للستاند والكوستر")}</a></div>
+    <div className="ops-heading"><div><p className="ops-eyebrow">{tr("المخزون والتجهيز")}</p><h1>{tr("المخزون")}</h1><p>{tr("من طلبية المصنع إلى الاستلام والجرد، كل حركة مربوطة بالصنف والكمية.")}</p></div><a className="export-button" href="#bulk-production">{tr("طلبية تصنيع جديدة ↓")}</a></div>
     <div className="inventory-summary"><article><span>{tr("أصناف مسجلة")}</span><strong>{skus.length}</strong><small>{tr("ستاند · كوستر · كارت")}</small></article><article><span>{tr("قطع مخططة للتصنيع")}</span><strong>{plannedTotal}</strong><small>{tr("لها ID وQR ولم تصل بعد")}</small></article><article><span>{tr("رصيد فعلي بالمخزون")}</span><strong>{(balancesResult.data ?? []).reduce((sum, row) => sum + row.on_hand, 0)}</strong><small>{tr("البيع يحتاج اعتماد السعر والعينة")}</small></article></div>
+    {staff.role === "owner" && <div id="bulk-production" className="inventory-primary-workflow"><BulkProductionOrder skus={productionSkus} /></div>}
     {staff.role === "owner" && <SkuManager families={familiesResult.data ?? []} skus={printSkus} plannedBySku={plannedBySku} />}
-    {staff.role === "owner" && <details id="reset-stock" className="inventory-workflow-panel inventory-reset-panel"><summary><span>↻</span><strong>{tr("تجديد مخزون الستاند والكوستر")}</strong><small>{tr("شطب القديم وإصدار ٨+٨")}</small></summary><ResetStockButton plannedStandCount={plannedStandCount} standOnHand={standOnHand} coasterOnHand={coasterOnHand} /></details>}
     {staff.role === "owner" && <details id="stock-receipt" className="inventory-stock-section inventory-workflow-panel"><summary><span>＋</span><strong>{tr("إضافة مخزون فعلي")}</strong><small>{tr("سجّل القطع التي وصلت من المصنع")}</small></summary><ReceiveStockForm skus={printSkus.filter((sku) => sku.state !== "paused").map((sku) => ({ id: sku.id, name: sku.display_name + " · " + sku.sku_code, image: sku.inventoryImage }))} pendingBatches={pendingBatches.map((batch) => ({ skuId: batch.sku_id, batchId: batch.batch_id, quantity: batch.quantity, createdAt: batch.created_at.toISOString() }))} legacyPendingBySku={legacyPlannedBySku} qrTarget={getSmartItemQrTarget()} /></details>}
+    {staff.role === "owner" && <details className="inventory-workflow-panel inventory-adjustment-panel"><summary><span>−</span><strong>{tr("خصم أو تصحيح مخزون")}</strong><small>{tr("بتوثيق سبب التعديل")}</small></summary><StockAdjustmentForm skus={stockAdjustmentSkus} /></details>}
     <details className="inventory-details"><summary>{tr("عرض نسخ المنتجات وحالة اعتمادها")}</summary><div className="orders-panel customer-panel"><div className="orders-toolbar"><div className="toolbar-title"><strong>{tr("نسخ المنتجات")}</strong><span>{skus.length}  {tr("مسجلة في هذه القائمة")}</span></div></div>
       <div className="table-scroll"><table className="orders-table inventory-table"><thead><tr><th>SKU</th><th>{tr("المنتج")}</th><th>{tr("الخيار")}</th><th>{tr("مخطط للتصنيع")}</th><th>{tr("المتاح")}</th><th>{tr("محجوز")}</th><th>{tr("السعر")}</th><th>{tr("الحالة")}</th></tr></thead><tbody>
         {skus.map((sku) => {

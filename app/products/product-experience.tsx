@@ -46,6 +46,7 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
   const [selected, setSelected] = useState(requested?.id ?? designs[0]?.id);
   const [photo, setPhoto] = useState(0);
   const [tier, setTier] = useState<Setup>('T0');
+  const [genericVariant, setGenericVariant] = useState(skus.find(sku => sku.options.face === 'default')?.options.variant ?? designs[0]?.variant ?? 'Standard');
   const [now, setNow] = useState<number | null>(null);
   const [custom, setCustom] = useState<CustomDesign | null>(null);
   const touchStart = useRef<{x: number; y: number} | null>(null);
@@ -59,9 +60,12 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
   }, [product.saleEndsAt]);
 
   const active = designs.find(design => design.id === selected) ?? designs[0];
+  const genericDesign = active?.face === 'default';
   const familyName = ar ? product.name : product.nameEn;
   const designName = ar ? active?.nameAr : active?.nameEn;
-  const title = designName?.startsWith('كارت') || designName?.endsWith('Card')
+  const title = genericDesign || designName === familyName
+    ? familyName
+    : designName?.startsWith('كارت') || designName?.endsWith('Card')
     ? designName
     : [familyName, designName].filter(Boolean).join(' · ');
   const images: ProductArtwork[] = active?.images.length
@@ -75,11 +79,13 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
     if ((!category || design.categoryAr === category) && !groups.has(design.group)) groups.set(design.group, design);
   }
   const finishes = designs.filter(design => design.group === active?.group);
+  const genericVariants = Array.from(new Set(skus.filter(sku => sku.options.face === 'default').map(sku => sku.options.variant).filter(Boolean)));
+  const selectedVariant = genericDesign ? genericVariant : active?.variant;
   const remaining = product.saleEndsAt && now !== null ? Math.max(0, Date.parse(product.saleEndsAt) - now) : null;
   const saleEnded = remaining === 0;
   const saleSku = saleEnded ? undefined : skus.find(sku =>
-    (!sku.options.face || sku.options.face === active?.face)
-    && (!sku.options.variant || sku.options.variant === active?.variant)
+    (!sku.options.face || sku.options.face === (product.hasNfcQr ? active?.face : 'default'))
+    && (!sku.options.variant || sku.options.variant === selectedVariant)
     && (sku.options.design ?? 'T0') === tier
   );
   const formatPrice = (value: number) => `${new Intl.NumberFormat(ar ? 'ar-EG' : 'en-EG').format(value)} ${t('ج.م', 'EGP')}`;
@@ -201,7 +207,7 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
           {description && <p className="shop-product-description">{description}</p>}
           <div className="shop-product-status" aria-live="polite">
             <span>{saleStatus}</span>
-            <span dir="ltr">NFC + QR</span>
+            <span dir="ltr">{product.hasNfcQr ? 'NFC + QR' : t('منتج مادي', 'Physical product')}</span>
             {product.badge && <span>{ar ? product.badge : product.badgeEn || product.badge}</span>}
           </div>
 
@@ -260,6 +266,13 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
             </section>
           )}
 
+          {genericDesign && genericVariants.length > 1 && (
+            <section className="shop-product-block" aria-labelledby="generic-variant-title">
+              <h2 id="generic-variant-title">{t('النسخة أو المقاس', 'Variant or size')}</h2>
+              <div className="shop-design-types">{genericVariants.map(variant => <button type="button" key={variant} aria-pressed={genericVariant === variant} onClick={() => setGenericVariant(variant)}>{variant}</button>)}</div>
+            </section>
+          )}
+
           {destinationDetails && (
             <section className="shop-destination" aria-labelledby="shop-destination-title">
               <div className="shop-destination-copy">
@@ -283,17 +296,17 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
           )}
 
           <section className="shop-product-block" aria-labelledby="shop-setup-title">
-            <h2 id="shop-setup-title">{t('طريقة التجهيز', 'Setup option')}</h2>
-            <div className="shop-setup-grid">
+            <h2 id="shop-setup-title">{product.hasNfcQr ? t('طريقة التجهيز', 'Setup option') : t('النسخة أو المقاس', 'Variant or size')}</h2>
+            {product.hasNfcQr ? <div className="shop-setup-grid">
               {setupOptions.map(({ value, label, hint }) => (
                 <label key={value}>
                   <input type="radio" name="tier" checked={tier === value} onChange={() => { setTier(value); setCustom(null); }} />
                   <span><strong>{label}</strong><small>{hint}</small></span>
                 </label>
               ))}
-            </div>
+            </div> : null}
             {tier === 'T0' ? (
-              <p className="shop-setup-details">{t('بعد الاستلام، فعّل القطعة بالكود واضبط الوجهة واكتب رابطها على NFC من الدليل. QR المطبوع جاهز.', 'After delivery, claim your item, set the destination and follow the guide to write its link to NFC. The printed QR is ready.')}</p>
+              <p className="shop-setup-details">{product.hasNfcQr ? t('بعد الاستلام، فعّل القطعة بالكود واضبط الوجهة واكتب رابطها على NFC من الدليل. QR المطبوع جاهز.', 'After delivery, claim your item, set the destination and follow the guide to write its link to NFC. The printed QR is ready.') : t('النسخة المحددة جاهزة ضمن خيارات المنتج.', 'The selected product variant is ready.')}</p>
             ) : (
               <form key={`${selected}-${tier}`} className="store-custom-form" onSubmit={previewCustom} onChange={() => setCustom(null)}>
                 <label>{t('اسم النشاط', 'Business name')}<input name="businessName" required maxLength={100} /></label>
@@ -313,8 +326,8 @@ export function ProductExperience({ product, designs, skus, locale, initialDesig
           <div className="store-buy-box shop-buy-box">
             {saleSku && (tier === 'T0' || custom) ? (
               <CartAddButton key={saleSku.id} skuId={saleSku.id} slug={product.slug} name={saleSku.displayName} priceEgp={saleSku.priceEgp}
-                choices={active ? [active.nameAr, active.variant, tier] : [tier]}
-                optionValues={active ? { face: active.face, variant: active.variant, design: tier } : { design: tier }}
+                choices={active ? [active.nameAr, selectedVariant ?? active.variant, tier] : [tier]}
+                optionValues={active ? { face: product.hasNfcQr ? active.face : 'default', variant: selectedVariant ?? active.variant, design: tier } : { design: tier }}
                 customDesign={tier !== 'T0' && custom ? custom : undefined} />
             ) : (
               <>

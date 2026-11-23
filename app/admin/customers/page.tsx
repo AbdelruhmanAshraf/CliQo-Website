@@ -59,19 +59,17 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
   const date = (value: string) => tr.date(value);
   return <AdminShell staffName={staff.display_name} staffRole={staff.role}><section className="ops-content">
     <div className="ops-heading"><div><p className="ops-eyebrow">{tr('علاقات العملاء')}</p><h1>{tr('العملاء')} <span className="count-pill">{total}</span></h1><p>{tr('كل العملاء، والطلبات والقطع المرتبطة بكل واحد. البحث يشمل السجل كاملًا.')}</p></div></div>
-    <div className="ops-metrics customer-metrics">
-      <article><span>{tr('إجمالي العملاء')}</span><strong>{allCustomers}</strong><small>{tr('كل السجلات')}</small></article>
-      <article><span>{tr('النتائج المطابقة')}</span><strong>{total}</strong><small>{q ? tr('للبحث الحالي') : tr('من قاعدة العملاء')}</small></article>
-      <article><span>{tr('الصفحة الحالية')}</span><strong>{current}</strong><small>{tr('من')} {pages}</small></article>
-      <article><span>{tr('المعروض الآن')}</span><strong>{rows.length}</strong><small>{tr('عميل في هذه الصفحة')}</small></article>
-    </div>
-    <form method="get" className="customer-search"><label htmlFor="customer-search">{tr('ابحث بالاسم أو الهاتف أو البريد')}</label><input id="customer-search" name="q" defaultValue={q} placeholder={tr('اكتب اسم العميل أو رقم الهاتف')} /><button type="submit">{tr('بحث')}</button></form>
-    <div className="customer-visual-grid">{rows.map(customer => <article className="customer-visual-card" key={customer.id}>
-      <div className="customer-card-head"><span className="customer-avatar">{customer.full_name.slice(0,1)}</span><div><h2>{customer.full_name}</h2><span dir="ltr">{customer.phone_e164}</span>{customer.email && <small dir="ltr">{customer.email}</small>}</div></div>
-      <div className="customer-card-stats"><div><strong>{customer.order_count}</strong><span>{tr('طلبات')}</span></div><div><strong>{customer.units_purchased}</strong><span>{tr('قطع مشتراة')}</span></div><div><strong>{customer.active_count}</strong><span>{tr('مفعّلة')}</span></div><div><strong>{customer.waiting_count}</strong><span>{tr('بانتظار التفعيل')}</span></div></div>
-      <div className="customer-card-types"><span>{tr('وجهة واحدة')} · {customer.single_count}</span><span>{tr('صفحة روابط')} · {customer.page_count}</span><span>{tr('قطع ذكية')} · {customer.smart_count}</span></div>
-      <footer><span>{tr('آخر طلب')}: {customer.last_order ? date(customer.last_order) : '—'}</span><Link href={`/cliqo-control/orders?q=${encodeURIComponent(customer.phone_e164)}`}>{tr('عرض الطلبات ←')}</Link></footer>
-    </article>)}{rows.length === 0 && <p className="empty-results">{total ? tr('لا توجد نتائج في هذه الصفحة.') : tr('لا يوجد عميل مطابق للبحث.')}</p>}</div>
+    <div className="customer-list-toolbar"><form method="get" className="customer-search"><label className="sr-only" htmlFor="customer-search">{tr('ابحث بالاسم أو الهاتف أو البريد')}</label><input id="customer-search" name="q" defaultValue={q} placeholder={tr('اكتب اسم العميل أو رقم الهاتف')} /><button type="submit">{tr('بحث')}</button>{q && <Link href="/cliqo-control/customers">{tr('مسح')}</Link>}</form><span>{tr('إجمالي العملاء')}: <strong>{allCustomers}</strong></span></div>
+    <div className="customer-table-wrap"><table className="orders-table customer-table"><thead><tr>
+      <th>{tr('العميل')}</th><th>{tr('التواصل')}</th><th>{tr('الطلبات')}</th><th>{tr('القطع')}</th><th>{tr('تفعيل القطع')}</th><th>{tr('آخر طلب')}</th><th>{tr('')}</th>
+    </tr></thead><tbody>{rows.map(customer => <tr key={customer.id}>
+      <td><strong>{customer.full_name}</strong><small>{tr('وجهة واحدة')} {customer.single_count} · {tr('صفحة روابط')} {customer.page_count}</small></td>
+      <td><a dir="ltr" href={`tel:${customer.phone_e164}`}>{customer.phone_e164}</a>{customer.email && <small><a dir="ltr" href={`mailto:${customer.email}`}>{customer.email}</a></small>}</td>
+      <td><strong>{customer.order_count}</strong></td><td>{customer.units_purchased}</td>
+      <td>{customer.active_count} {tr('مفعّلة')}<small>{customer.waiting_count} {tr('بانتظار التفعيل')}</small></td>
+      <td>{customer.last_order ? date(customer.last_order) : '—'}</td>
+      <td><Link className="customer-orders-link" href={`/cliqo-control/orders?q=${encodeURIComponent(customer.phone_e164)}`}>{tr('الطلبات ←')}</Link></td>
+    </tr>)}{rows.length === 0 && <tr><td colSpan={7} className="empty-results">{total ? tr('لا توجد نتائج في هذه الصفحة.') : tr('لا يوجد عميل مطابق للبحث.')}</td></tr>}</tbody></table></div>
     <nav className="customer-pagination" aria-label={tr('صفحات العملاء')}>
       {current > 1 && <Link href={href(current-1)}>{tr('السابق')}</Link>}
       <span>{tr('صفحة')} {current} {tr('من')} {pages} · {total} {tr('عميل')}</span>

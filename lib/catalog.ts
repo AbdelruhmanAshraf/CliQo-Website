@@ -12,6 +12,7 @@ export type CatalogDesignContent = {
 export type CatalogProduct = Product & {
   id?:string;
   familyKey: string;
+  hasNfcQr: boolean;
   nameEn: string;
   categoryEn: string;
   descriptionEn: string;
@@ -32,7 +33,7 @@ export type CatalogProduct = Product & {
 };
 
 type CatalogRow = {
-  id:string; family_key:string; name_ar:string; name_en:string; supports_landing_page:boolean;
+  id:string; family_key:string; name_ar:string; name_en:string; supports_landing_page:boolean; has_nfc_qr:boolean;
   catalog_visible:boolean; catalog_deleted_at:string|null; catalog_category_ar:string;
   catalog_category_en:string; catalog_description_ar:string; catalog_description_en:string;
   catalog_images:string[]; catalog_specs:Record<string,string>;catalog_specs_en:Record<string,string>; catalog_sale_ends_at:string|null; state:Product['status'];
@@ -41,7 +42,7 @@ type CatalogRow = {
 };
 
 const fallback: CatalogProduct[] = products.map((product) => ({
-  ...product, familyKey:product.slug==='card'?'pvc-card':product.slug,
+  ...product, familyKey:product.slug==='card'?'pvc-card':product.slug, hasNfcQr:['stand','coaster','card'].includes(product.slug),
   nameEn:({stand:'NFC Acrylic Stand',coaster:'Smart Coaster',card:'PVC Smart Card',wallet:'Smart Wallet','magnetic-wallet':'Magnetic Wallet',keychain:'NFC Keychain'} as Record<string,string>)[product.slug],
   categoryEn:({stand:'Stands',coaster:'Coasters',card:'Cards'} as Record<string,string>)[product.slug]??'In development',
   descriptionEn:product.description, images:['stand','coaster','card'].includes(product.slug)?[productPhotos[product.slug]]:[],
@@ -61,7 +62,7 @@ export async function getCatalogProducts(includeHidden=false):Promise<CatalogPro
     return [];
   }
   try {
-    const {rows}=await getDb().query<CatalogRow>(`select id,family_key,name_ar,name_en,state,supports_landing_page,
+    const {rows}=await getDb().query<CatalogRow>(`select id,family_key,name_ar,name_en,state,supports_landing_page,has_nfc_qr,
       catalog_visible,catalog_deleted_at,catalog_category_ar,catalog_category_en,
       catalog_description_ar,catalog_description_en,catalog_images,catalog_specs,catalog_specs_en,catalog_sale_ends_at,
       catalog_design_images,catalog_design_content,catalog_subcategory_ar,catalog_subcategory_en,catalog_badge_ar,catalog_badge_en,catalog_compare_at_minor
@@ -76,7 +77,7 @@ export async function getCatalogProducts(includeHidden=false):Promise<CatalogPro
           slug==='card'?cardSide('main-black','front'):(slug==='stand'?standPreview:coasterPreview)('all-in-one')])]
         : savedImages;
       return {
-        id:row.id,slug, familyKey:row.family_key,name:row.name_ar,nameEn:row.name_en,
+        id:row.id,slug, familyKey:row.family_key,hasNfcQr:row.has_nfc_qr,name:row.name_ar,nameEn:row.name_en,
         shortName:base?.shortName??row.name_en,category:row.catalog_category_ar||base?.category||'',
         categoryEn:row.catalog_category_en||base?.categoryEn||'',
         statusLabel:base?.statusLabel??'قيد التجهيز',status:row.state==='ready'?'ready':'preparing',

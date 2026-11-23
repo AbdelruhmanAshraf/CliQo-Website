@@ -11,6 +11,7 @@ import { PrintBatchForm } from "./print-batch-form";
 import { createCoreProductSkus, createSkuDraft, deleteSku, setPlannedQuantity, updateSkuApprovals, updateSkuDetails } from "./actions";
 
 const faceNames: Record<string, string> = {
+  default: "Standard",
   review: "Google", instapay: "InstaPay", vodafone: "Vodafone Cash", instagram: "Instagram",
   tiktok: "TikTok", facebook: "Facebook", "all-in-one": "All-in-One",
 };
@@ -28,10 +29,11 @@ const familyImages: Record<string, string> = {
   coaster: productPhotos.coaster,
   "pvc-card": productPhotos.card,
 };
-type Family = { id: string; family_key: string; name_ar: string; name_en: string };
+type Family = { id: string; family_key: string; name_ar: string; name_en: string; has_nfc_qr: boolean; catalog_deleted_at: string | null };
 type Sku = { id: string; product_family_id: string; sku_code: string; display_name: string;
   options: Record<string, string>; state: string; price_minor: number | null;
   price_approved: boolean; sample_approved: boolean; fulfillment_approved: boolean;
+  hasNfcQr: boolean;
   inventoryImage?: string;
   printTemplateFile?: string; printTemplatePreview?: string; printTemplateLabel?: string; printPreviewHasQr?: boolean; printTemplateRetired?: boolean;
   printBatches?: { batchId: string; quantity: number; createdAt: string }[] };
@@ -46,7 +48,7 @@ export function SkuManager({ families, skus, plannedBySku }: {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [hydrated, setHydrated] = useState(false);
-  const supported = families.filter((family) => facesByFamily[family.family_key]);
+  const supported = families.filter((family) => !family.catalog_deleted_at);
   const [familyId, setFamilyId] = useState(supported[0]?.id ?? "");
   const [newFace, setNewFace] = useState("all-in-one");
   const [newVariant, setNewVariant] = useState("All-in-One");
@@ -67,9 +69,9 @@ export function SkuManager({ families, skus, plannedBySku }: {
   function selectFamily(nextId: string) {
     setFamilyId(nextId);
     const nextFamily = supported.find((item) => item.id === nextId);
-    const firstFace = Object.keys(facesByFamily[nextFamily?.family_key ?? ""] ?? {})[0] ?? "all-in-one";
+    const firstFace = Object.keys(facesByFamily[nextFamily?.family_key ?? ""] ?? {})[0] ?? "default";
     setNewFace(firstFace);
-    setNewVariant(facesByFamily[nextFamily?.family_key ?? ""]?.[firstFace]?.[0] ?? "");
+    setNewVariant(facesByFamily[nextFamily?.family_key ?? ""]?.[firstFace]?.[0] ?? "Standard");
   }
   function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,7 +94,7 @@ export function SkuManager({ families, skus, plannedBySku }: {
     <div className="inventory-family-list">
       {supported.map((item,index)=>{const familySkus=skus.filter(sku=>sku.product_family_id===item.id);
         const total=familySkus.reduce((sum,sku)=>sum+Math.max(0,(sku.onHand??0)-(sku.reserved??0)),0);
-        return <details className="inventory-family" name="inventory-family" key={item.id} onToggle={event=>{if(event.currentTarget.open)selectFamily(item.id);}}><summary><img src={familyImages[item.family_key]} alt=""/><span><strong>{tr.locale==='en'?item.name_en:item.name_ar}</strong><small>{familySkus.length} {tr("أصناف")} · {total} {tr("قطعة بالمخزون")}</small></span><b aria-hidden="true">⌄</b></summary><div className="inventory-family-body">
+        return <details className="inventory-family" name="inventory-family" key={item.id} onToggle={event=>{if(event.currentTarget.open)selectFamily(item.id);}}><summary><img src={familyImages[item.family_key] ?? familyImages.stand} alt=""/><span><strong>{tr.locale==='en'?item.name_en:item.name_ar}</strong><small>{familySkus.length} {tr("أصناف")} · {total} {tr("قطعة بالمخزون")}</small></span><b aria-hidden="true">⌄</b></summary><div className="inventory-family-body">
           {familySkus.map(sku=><SkuCard key={sku.id} sku={sku} family={item} families={supported} planned={plannedBySku[sku.id]??0} pending={pending} run={run}/>) }
           {!familySkus.length&&<p className="inventory-empty-category">{tr("مفيش صنف في النوع ده. أضفه من النموذج أدناه.")}</p>}
         </div></details>;})}
@@ -104,12 +106,17 @@ export function SkuManager({ families, skus, plannedBySku }: {
           <label>{tr("فئة المنتج")}<select value={familyId} onChange={(event) => selectFamily(event.target.value)}>
             {supported.map((item) => <option key={item.id} value={item.id}>{tr.locale === "en" ? item.name_en : item.name_ar}</option>)}</select></label>
           <label>{tr("اسم النسخة")}<input name="name" required minLength={2} maxLength={120} placeholder={tr("مثال: ستاند Google أبيض")} /></label>
-          <label>{tr("الفئة الفرعية / الوجه")}<select value={newFace} onChange={(event) => { const next = event.target.value; setNewFace(next); setNewVariant(faces[next]?.[0] ?? ""); }}>
-            {Object.keys(faces).map((key) => <option key={key} value={key}>{faceNames[key]}</option>)}</select></label>
-          <label>{tr("اللون أو النسخة")}<select value={newVariant} onChange={(event) => setNewVariant(event.target.value)}>
-            {(faces[newFace] ?? []).filter((choice) => choice !== "شفاف").map((choice) => <option key={choice} value={choice}>{choice}</option>)}</select></label>
-          <label>{tr("طريقة التصميم")}<select value={newDesign} onChange={(event) => setNewDesign(event.target.value)}>
-            <option value="T0">T0 · {tr("قالب جاهز")}</option><option value="T1">T1 · {tr("تصميم العميل")}</option><option value="T2">T2 · {tr("تصميم من CliQo")}</option></select></label>
+          {Object.keys(faces).length ? <>
+            <label>{tr("الفئة الفرعية / الوجه")}<select value={newFace} onChange={(event) => { const next = event.target.value; setNewFace(next); setNewVariant(faces[next]?.[0] ?? ""); }}>
+              {Object.keys(faces).map((key) => <option key={key} value={key}>{faceNames[key]}</option>)}</select></label>
+            <label>{tr("اللون أو النسخة")}<select value={newVariant} onChange={(event) => setNewVariant(event.target.value)}>
+              {(faces[newFace] ?? []).filter((choice) => choice !== "شفاف").map((choice) => <option key={choice} value={choice}>{choice}</option>)}</select></label>
+            <label>{tr("طريقة التصميم")}<select value={newDesign} onChange={(event) => setNewDesign(event.target.value)}>
+              <option value="T0">T0 · {tr("قالب جاهز")}</option><option value="T1">T1 · {tr("تصميم العميل")}</option><option value="T2">T2 · {tr("تصميم من CliQo")}</option></select></label>
+          </> : <>
+            <label>{tr("النسخة أو المقاس")}<input required minLength={1} maxLength={80} value={newVariant} onChange={(event) => setNewVariant(event.target.value)} placeholder={tr("مثال: أسود · مقاس متوسط")} /></label>
+            {family?.has_nfc_qr && <label>{tr("طريقة التصميم")}<select value={newDesign} onChange={(event) => setNewDesign(event.target.value)}><option value="T0">T0 · {tr("قالب جاهز")}</option><option value="T1">T1 · {tr("تصميم العميل")}</option><option value="T2">T2 · {tr("تصميم من CliQo")}</option></select></label>}
+          </>}
           <button className="save-note" type="submit">{tr("أضف الصنف بدون سعر")}</button>
         </fieldset>
       </form>
@@ -128,9 +135,11 @@ function SkuCard({ sku, family, families, planned, pending, run }: {
   const [design, setDesign] = useState(sku.options?.design ?? "T0");
   const selectedFamily = families.find((item) => item.id === familyId) ?? family;
   const faces = facesByFamily[selectedFamily?.family_key ?? ""] ?? {};
+  const knownFaceFamily = Object.keys(faces).length > 0;
   const approved = sku.state === "ready" && sku.price_approved && sku.sample_approved && sku.fulfillment_approved;
   const designFamily=family?.family_key==='pvc-card'?'card':family?.family_key??'';
   const catalogDesign=catalogDesigns[designFamily]?.find(item=>item.face===sku.options?.face&&item.variant===sku.options?.variant);
+  const designHref=catalogDesign?`/admin/products/${designFamily}/${catalogDesign.id}`:(!catalogDesigns[designFamily]?.length?`/admin/products/${designFamily}/${designFamily}-default`:null);
   function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const data = new FormData(event.currentTarget);
     run(() => updateSkuDetails({ skuId: sku.id, familyId, displayName: String(data.get("displayName") ?? ""), face, variant, design }));
@@ -151,19 +160,24 @@ function SkuCard({ sku, family, families, planned, pending, run }: {
     <summary><img className="inventory-sku-thumb" src={sku.inventoryImage ?? familyImages[family?.family_key ?? ""] ?? familyImages.stand} alt=""/><span className="inventory-sku-title"><strong>{snapshotLabel(tr, sku.display_name)}</strong><small>{sku.sku_code} · {faceNames[sku.options?.face] ?? sku.options?.face} · {sku.options?.variant}</small></span>
       <span className="inventory-sku-stats"><b>{Math.max(0,(sku.onHand??0)-(sku.reserved??0))} {tr("بالمخزون")}</b><b>{approved ? tr("معتمد") : tr("قيد التجهيز")}</b></span></summary>
     <div className="inventory-sku-body">
-      {catalogDesign&&<Link className="export-button inventory-design-link" href={`/admin/products/${designFamily}/${catalogDesign.id}`}>{tr("تعديل صفحة التصميم والصور")}</Link>}
+      {designHref&&<Link className="export-button inventory-design-link" href={designHref}>{tr("تعديل صفحة التصميم والصور")}</Link>}
       {sku.printTemplateFile && <PrintBatchForm skuId={sku.id} templateFile={sku.printTemplatePreview ?? sku.printTemplateFile} templateLabel={sku.printTemplateLabel ?? sku.display_name} previewHasQr={sku.printPreviewHasQr ?? true} retired={sku.printTemplateRetired} recent={sku.printBatches ?? []} />}
       <form className="inventory-edit-form" onSubmit={saveDetails}>
         <h3>{tr("بيانات الصنف")}</h3>
         <label>{tr("اسم النسخة")}<input name="displayName" required minLength={2} maxLength={120} defaultValue={sku.display_name} /></label>
-        <label>{tr("فئة المنتج")}<select value={familyId} onChange={(event) => { const next = event.target.value; setFamilyId(next); const f = families.find((item) => item.id === next); const key = Object.keys(facesByFamily[f?.family_key ?? ""] ?? {})[0]; setFace(key); setVariant(facesByFamily[f?.family_key ?? ""]?.[key]?.[0] ?? ""); }}>
+        <label>{tr("فئة المنتج")}<select value={familyId} onChange={(event) => { const next = event.target.value; setFamilyId(next); const f = families.find((item) => item.id === next); const key = Object.keys(facesByFamily[f?.family_key ?? ""] ?? {})[0]; setFace(key ?? "default"); setVariant(facesByFamily[f?.family_key ?? ""]?.[key]?.[0] ?? "Standard"); }}>
           {families.map((item) => <option key={item.id} value={item.id}>{tr.locale === "en" ? item.name_en : item.name_ar}</option>)}</select></label>
-        <label>{tr("الفئة الفرعية / الوجه")}<select value={face} onChange={(event) => { const next = event.target.value; setFace(next); setVariant(faces[next]?.[0] ?? ""); }}>
-          {Object.keys(faces).map((key) => <option key={key} value={key}>{faceNames[key]}</option>)}</select></label>
-        <label>{tr("اللون أو النسخة")}<select value={variant} onChange={(event) => setVariant(event.target.value)}>
-          {(faces[face] ?? []).map((choice) => <option key={choice} value={choice}>{choice}</option>)}</select></label>
-        <label>{tr("طريقة التصميم")}<select value={design} onChange={(event) => setDesign(event.target.value)}>
-          <option value="T0">T0</option><option value="T1">T1</option><option value="T2">T2</option></select></label>
+        {knownFaceFamily ? <>
+          <label>{tr("الفئة الفرعية / الوجه")}<select value={face} onChange={(event) => { const next = event.target.value; setFace(next); setVariant(faces[next]?.[0] ?? ""); }}>
+            {Object.keys(faces).map((key) => <option key={key} value={key}>{faceNames[key]}</option>)}</select></label>
+          <label>{tr("اللون أو النسخة")}<select value={variant} onChange={(event) => setVariant(event.target.value)}>
+            {(faces[face] ?? []).map((choice) => <option key={choice} value={choice}>{choice}</option>)}</select></label>
+          <label>{tr("طريقة التصميم")}<select value={design} onChange={(event) => setDesign(event.target.value)}>
+            <option value="T0">T0</option><option value="T1">T1</option><option value="T2">T2</option></select></label>
+        </> : <>
+          <label>{tr("النسخة أو المقاس")}<input required minLength={1} maxLength={80} value={variant} onChange={(event) => setVariant(event.target.value)} /></label>
+          {selectedFamily?.has_nfc_qr && <label>{tr("طريقة التصميم")}<select value={design} onChange={(event) => setDesign(event.target.value)}><option value="T0">T0</option><option value="T1">T1</option><option value="T2">T2</option></select></label>}
+        </>}
         <button className="export-button" type="submit" disabled={pending}>{tr("حفظ بيانات الصنف")}</button>
       </form>
       <form className="inventory-edit-form" onSubmit={saveApproval}>
@@ -174,7 +188,7 @@ function SkuCard({ sku, family, families, planned, pending, run }: {
         <label className="sku-check"><input name="fulfillmentApproved" type="checkbox" defaultChecked={sku.fulfillment_approved} />{tr("التجهيز والتغليف معتمدان")}</label>
         <button className="export-button" type="submit" disabled={pending}>{tr("حفظ السعر والاعتمادات")}</button>
       </form>
-      {!sku.printTemplateFile && <form className="inventory-edit-form inventory-plan-form" onSubmit={savePlan}>
+      {sku.hasNfcQr && !sku.printTemplateFile && <form className="inventory-edit-form inventory-plan-form" onSubmit={savePlan}>
         <h3>{tr("دفعة التصنيع وQR")}</h3>
         <p>{tr("العدد هنا خطة تصنيع. كل قطعة تأخذ ID وQR مختلفين، ولا تزيد الكمية المتاحة للبيع حتى الاستلام.")}</p>
         <p className="inventory-print-pending">{tr("قالب الوجه والظهر غير مربوط لهذا التصميم بعد؛ يمكن تنزيل QR والمعرّفات، والطباعة المركبة تنتظر ملفين نهائيين بمقاس البطاقة.")}</p>
@@ -183,6 +197,7 @@ function SkuCard({ sku, family, families, planned, pending, run }: {
         <a className="export-button" href={`/admin/items/qr-batch?sku=${sku.id}`}>{tr("نزّل QR لكل قطع الصنف")}</a>
         <a className="export-button" href={`/admin/items/print-manifest?sku=${sku.id}`}>{tr("نزّل كشف ID والروابط")}</a>
       </form>}
+      {!sku.hasNfcQr && <div className="inventory-edit-form inventory-plan-form"><h3>{tr("صنف مادي بدون QR")}</h3><p>{tr("تقدر تسجل الاستلام والخصم من المخزون. تجهيز QR والتفعيل غير مطبق على هذه الفئة.")}</p></div>}
       {sku.printTemplateFile && planned > 0 && <div className="inventory-edit-form inventory-plan-form">
         <p>{tr("قطع مخططة ولم تُستلم")}: {planned}</p>
         <a className="export-button" href={`/admin/items/qr-batch?sku=${sku.id}`}>{tr("نزّل QR لكل قطع الصنف")}</a>

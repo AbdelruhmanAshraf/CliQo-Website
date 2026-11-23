@@ -49,6 +49,138 @@ export async function preparePrintBatch(skuId: string, quantity: number, batchId
   }
 }
 
+export async function prepareBulkPrintBatch(batchId: string, requested: Array<{ skuId: string; quantity: number }>): Promise<Result & { batchId?: string; quantity?: number }> {
+  const tr = await getCopy();
+  const pick = (ar: string, en: string) => tr.locale === "ar" ? ar : en;
+  await requireStaff(["owner"]);
+  if (!uuid.test(batchId) || !Array.isArray(requested) || requested.length < 1 || requested.length > 20
+      || requested.some((line) => !line || typeof line !== "object")) {
+    return { ok: false, message: pick("اختار صنفًا واحدًا على الأقل.", "Choose at least one SKU.") };
+  }
+  const cleaned = requested.map((line) => ({ skuId: line.skuId, quantity: line.quantity }))
+    .filter((line) => Number.isInteger(line.quantity) && line.quantity > 0);
+  const skuIds = cleaned.map((line) => line.skuId);
+  const total = cleaned.reduce((sum, line) => sum + line.quantity, 0);
+  if (cleaned.length !== requested.filter((line) => Number.isInteger(line.quantity) && line.quantity > 0).length
+    || skuIds.some((id) => !uuid.test(id)) || new Set(skuIds).size !== skuIds.length || total < 1 || total > 50
+    || cleaned.some((line) => line.quantity > 50)) {
+    return { ok: false, message: pick("الحد الأقصى ٥٠ قطعة في الطلبية، من ٢٠ صنفًا بحد أقصى.", "Limit this production batch to 50 units and 20 SKUs.") };
+  }
+  if (!getSmartItemQrTarget()) return { ok: false, message: pick("اضبط عنوان QR قبل تجهيز الطلبية.", "Configure the QR origin before preparing this order.") };
+  const sorted = [...cleaned].sort((a, b) => a.skuId.localeCompare(b.skuId));
+  const client = await getDb().connect();
+  try {
+    const skuResult = await client.query<{ id: string; family_key: string; options: Record<string, string>; has_nfc_qr: boolean; state: string; checkout_test: boolean }>(
+      "select s.id::text,f.family_key,s.options,f.has_nfc_qr,s.state::text,s.checkout_test from public.product_skus s " +
+      "join public.product_families f on f.id=s.product_family_id where s.id=any($1::uuid[])", [skuIds],
+    );
+    const skuMap = new Map(skuResult.rows.map((sku) => [sku.id, sku]));
+    if (skuMap.size !== cleaned.length) return { ok: false, message: pick("أحد الأصناف غير موجود.", "A selected SKU was not found.") };
+    for (const line of sorted) {
+      const sku = skuMap.get(line.skuId);
+      const template = sku && getPrintTemplate(sku.family_key, sku.options.face, sku.options.variant, sku.options.design);
+      if (!sku?.has_nfc_qr || sku.checkout_test || sku.state === "paused" || template?.retired) {
+        return { ok: false, message: pick("أحد الأصناف لا يملك قالب طباعة حاليًا.", "A selected SKU has no active print template.") };
+      }
+      if (template) {
+        await loadPrintTemplate(template);
+        if (template.frontFile) await loadPrintArtwork(template.frontFile, template.widthMm ?? 0, template.heightMm ?? 0);
+      }
+    }
+    await client.query("begin");
+    await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [batchId]);
+    const previous = await client.query<{ sku_id: string; quantity: number }>(
+      "select sku_id::text,count(*)::int as quantity from public.smart_items where production_batch_id=$1 group by sku_id", [batchId],
+    );
+    if (previous.rows.length) {
+      const recorded = new Map(previous.rows.map((row) => [row.sku_id, row.quantity]));
+      const matches = recorded.size === cleaned.length && cleaned.every((line) => recorded.get(line.skuId) === line.quantity);
+      if (!matches) throw new Error("batch already used");
+      await client.query("commit");
+      return { ok: true, batchId, quantity: total, message: pick("الطلبية محفوظة بالفعل بنفس الأصناف والكميات.", "This batch is already saved with the same SKUs and quantities.") };
+    }
+    for (const line of sorted) {
+      const created = await client.query<{ id: string; public_id: string }>(
+        "insert into public.smart_items(sku_id,state,production_planned_at,production_batch_id) " +
+        "select $1,'unassigned',now(),$3 from generate_series(1,$2) returning id::text,public_id::text",
+        [line.skuId, line.quantity, batchId],
+      );
+      for (const item of created.rows) {
+        const issued = await issueActivationCode(client, item.public_id);
+        await client.query(
+          "insert into public.smart_item_activation_tokens(smart_item_id,token_hash,print_nonce) values($1,$2,$3)",
+          [item.id, issued.tokenHash, issued.nonce],
+        );
+      }
+    }
+    await client.query("commit");
+    revalidatePath("/cliqo-control/inventory");
+    revalidatePath("/cliqo-control/items");
+    return { ok: true, batchId, quantity: total, message: pick("تم حفظ طلبية التصنيع وتجهيز QR مستقل لكل قطعة.", "Production order saved with a unique QR for every unit.") };
+  } catch {
+    await client.query("rollback").catch(() => undefined);
+    return { ok: false, message: pick("تعذر حفظ الطلبية. لم يتغير المخزون.", "Could not save the production order. Inventory was not changed.") };
+  } finally {
+    client.release();
+  }
+}
+
+export async function removeInventoryStock(skuId: string, quantity: number, reason: string): Promise<Result> {
+  const tr = await getCopy();
+  const pick = (ar: string, en: string) => tr.locale === "ar" ? ar : en;
+  if (!uuid.test(skuId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 200
+      || reason.trim().length < 3 || reason.trim().length > 500) {
+    return { ok: false, message: pick("راجع الصنف والكمية وسبب التعديل.", "Check the SKU, quantity and reason.") };
+  }
+  const { staff } = await requireStaff(["owner"]);
+  const client = await getDb().connect();
+  try {
+    await client.query("begin");
+    const sku = await client.query<{ has_nfc_qr: boolean }>(
+      "select f.has_nfc_qr from public.product_skus s join public.product_families f on f.id=s.product_family_id where s.id=$1 for update of s",
+      [skuId],
+    );
+    if (!sku.rows[0]) throw new Error("SKU not found");
+    const balance = await client.query<{ on_hand: number; reserved: number }>(
+      "select on_hand,reserved from public.inventory_balances where sku_id=$1 for update", [skuId],
+    );
+    const current = balance.rows[0];
+    if (!current || quantity > current.on_hand - current.reserved) {
+      await client.query("rollback");
+      return { ok: false, message: pick("الكمية أكبر من المتاح غير المحجوز.", "Quantity exceeds unreserved stock.") };
+    }
+    if (sku.rows[0].has_nfc_qr) {
+      const items = await client.query<{ id: string }>(
+        `select i.id::text from public.smart_items i where i.sku_id=$1 and i.state='ready'
+          and i.owner_user_id is null and i.order_line_id is null and i.manual_handoff_reference is null
+          order by i.created_at desc,i.id desc limit $2 for update of i skip locked`, [skuId, quantity],
+      );
+      if (items.rows.length !== quantity) {
+        await client.query("rollback");
+        return { ok: false, message: pick("سجل القطع لا يطابق الرصيد. لم يتغير المخزون.", "Unit records do not match stock. No changes were made.") };
+      }
+      const ids = items.rows.map((item) => item.id);
+      await client.query("update public.smart_item_activation_tokens set consumed_at=coalesce(consumed_at,now()) where smart_item_id=any($1::uuid[])", [ids]);
+      await client.query("update public.smart_items set state='disabled',updated_at=now() where id=any($1::uuid[])", [ids]);
+    }
+    await client.query("update public.inventory_balances set on_hand=on_hand-$2,updated_at=now() where sku_id=$1", [skuId, quantity]);
+    await client.query(
+      "insert into public.inventory_movements(sku_id,kind,quantity,reason,created_by) values($1,'adjusted',$2,$3,$4)",
+      [skuId, quantity, reason.trim(), staff.user_id],
+    );
+    await client.query("commit");
+    revalidatePath("/cliqo-control/inventory");
+    revalidatePath("/cliqo-control/items");
+    revalidatePath("/products");
+    return { ok: true, message: pick("تم خصم الكمية وتوثيق الحركة.", "Stock reduced and movement recorded.") };
+  } catch {
+    await client.query("rollback").catch(() => undefined);
+    return { ok: false, message: pick("تعذر تعديل المخزون. راجع حركات الصنف.", "Could not adjust stock. Review this SKU's movements.") };
+  } finally {
+    client.release();
+  }
+}
+
 const faceNames: Record<string, string> = {
   review: "Google", instapay: "InstaPay", vodafone: "Vodafone Cash",
   instagram: "Instagram", tiktok: "TikTok", facebook: "Facebook", "all-in-one": "All-in-One",
@@ -105,8 +237,8 @@ export async function createSkuDraft(input: {
   await requireStaff(["owner"]);
   const db = getDb();
   try {
-    const familyResult = await db.query<{ family_key: string }>(
-      "select family_key from public.product_families where id = $1", [input.familyId],
+    const familyResult = await db.query<{ family_key: string; has_nfc_qr: boolean }>(
+      "select family_key,has_nfc_qr from public.product_families where id = $1", [input.familyId],
     );
     const family = familyResult.rows[0];
     if (!family) return { ok: false, message: tr("المنتج المحدد غير موجود.") };
@@ -118,6 +250,13 @@ export async function createSkuDraft(input: {
         return { ok: false, message: "التصميم القديم متاح للدفعات السابقة فقط." };
       }
       options = { face: input.face, variant: input.variant, design: input.design };
+    } else {
+      const variant = input.variant.trim();
+      if (variant.length < 1 || variant.length > 80 || !["T0", "T1", "T2"].includes(input.design)
+          || (!family.has_nfc_qr && input.design !== "T0")) {
+        return { ok: false, message: tr("الصنف الجديد يحتاج نسخة واضحة من حرف إلى ٨٠ حرفًا.") };
+      }
+      options = { face: "default", variant, design: family.has_nfc_qr ? input.design : "T0" };
     }
     const skuCode = `CQ-${randomBytes(5).toString("hex").toUpperCase()}`;
     await db.query(
@@ -148,15 +287,26 @@ export async function updateSkuDetails(input: {
       "select product_family_id, options from public.product_skus where id=$1 for update", [input.skuId],
     );
     const sku = current.rows[0];
-    const family = await client.query<{ family_key: string }>(
-      "select family_key from public.product_families where id=$1", [input.familyId],
+    const family = await client.query<{ family_key: string; has_nfc_qr: boolean }>(
+      "select family_key,has_nfc_qr from public.product_families where id=$1", [input.familyId],
     );
     if (!sku || !family.rows[0]) { await client.query("rollback"); return { ok: false, message: tr("الصنف غير موجود.") }; }
-    const variants = familyFaces[family.rows[0].family_key]?.[input.face];
-    if (!variants || !variants.includes(input.variant) || !["T0", "T1", "T2"].includes(input.design)) {
-      await client.query("rollback"); return { ok: false, message: tr("راجع الفئة الفرعية والنسخة والتصميم.") };
+    const familyRow = family.rows[0];
+    const variants = familyFaces[familyRow.family_key]?.[input.face];
+    let options: Record<string, string>;
+    if (familyFaces[familyRow.family_key]) {
+      if (!variants || !variants.includes(input.variant) || !["T0", "T1", "T2"].includes(input.design)) {
+        await client.query("rollback"); return { ok: false, message: tr("راجع الفئة الفرعية والنسخة والتصميم.") };
+      }
+      options = { face: input.face, variant: input.variant, design: input.design };
+    } else {
+      const variant = input.variant.trim();
+      if (variant.length < 1 || variant.length > 80 || !["T0", "T1", "T2"].includes(input.design)
+          || (!familyRow.has_nfc_qr && input.design !== "T0")) {
+        await client.query("rollback"); return { ok: false, message: tr("اكتب نسخة من حرف إلى ٨٠ حرفًا لفئة المنتج.") };
+      }
+      options = { face: "default", variant, design: familyRow.has_nfc_qr ? input.design : "T0" };
     }
-    const options = { face: input.face, variant: input.variant, design: input.design };
     const classificationChanged = sku.product_family_id !== input.familyId
       || ["face", "variant", "design"].some((key) => sku.options[key] !== options[key as keyof typeof options]);
     if (classificationChanged) {

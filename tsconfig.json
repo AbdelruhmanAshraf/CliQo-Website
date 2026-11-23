@@ -43,7 +43,9 @@
     ".next-campaign-review/types/**/*.ts",
     ".next-campaign-review/dev/types/**/*.ts",
     ".next-customer-review/types/**/*.ts",
-    ".next-customer-review/dev/types/**/*.ts"
+    ".next-customer-review/dev/types/**/*.ts",
+    ".next-orders-qa/types/**/*.ts",
+    ".next-orders-qa/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

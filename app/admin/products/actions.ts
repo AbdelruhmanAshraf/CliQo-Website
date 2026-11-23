@@ -7,11 +7,12 @@ import type {CatalogDesignContent} from '@/lib/catalog';
 
 const slugPattern=/^[a-z0-9][a-z0-9-]{1,39}$/;
 const uuidPattern=/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i;
-type ProductInput={id?:string;slug:string;nameAr:string;nameEn:string;categoryAr:string;categoryEn:string;subcategoryAr:string;subcategoryEn:string;badgeAr:string;badgeEn:string;compareAtMinor:number|null;designImages:Record<string,string[]>;descriptionAr:string;descriptionEn:string;images:string[];specs:Record<string,string>;specsEn:Record<string,string>;visible:boolean;supportsLandingPage:boolean;saleEndsAt:string|null};
+type ProductInput={id?:string;slug:string;nameAr:string;nameEn:string;categoryAr:string;categoryEn:string;subcategoryAr:string;subcategoryEn:string;badgeAr:string;badgeEn:string;compareAtMinor:number|null;designImages:Record<string,string[]>;descriptionAr:string;descriptionEn:string;images:string[];specs:Record<string,string>;specsEn:Record<string,string>;visible:boolean;supportsLandingPage:boolean;hasNfcQr:boolean;saleEndsAt:string|null};
 type Result={ok:boolean;message:string};
 const allowedImage=(src:string)=>src.startsWith('/products/')&&/\.(webp|png|jpe?g)$/i.test(src)||
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL&&src.startsWith(process.env.NEXT_PUBLIC_SUPABASE_URL+'/storage/v1/object/public/catalog-images/')&&/\.(webp|png|jpe?g)$/i.test(src));
 function validate(input:ProductInput):string|null {
+  if(typeof input.hasNfcQr!=='boolean')return 'حدد إذا كان المنتج يدعم NFC وQR.';
   if(!slugPattern.test(input.slug))return 'اسم الرابط لازم يكون حروف إنجليزية صغيرة وأرقام وشرطات فقط.';
   if(!input.nameAr.trim()||!input.nameEn.trim()||input.nameAr.length>100||input.nameEn.length>100)return 'اكتب اسم المنتج بالعربي والإنجليزي.';
   if(input.descriptionAr.length>1000||input.descriptionEn.length>1000||input.categoryAr.length>80||input.categoryEn.length>80)return 'نص المنتج أطول من المسموح.';
@@ -30,9 +31,11 @@ export async function saveCatalogDesign(input:{familyId:string;slug:string;desig
   await requireStaff(['owner']);
   if(!input||typeof input.slug!=='string'||typeof input.designId!=='string'||typeof input.familyId!=='string')
     return {ok:false,message:'بيانات التصميم غير صالحة.'};
-  const design=(catalogDesigns[input.slug]??[]).find(item=>item.id===input.designId);
+  const designs=catalogDesigns[input.slug]??[];
+  const design=designs.find(item=>item.id===input.designId);
+  const genericDesign=designs.length===0&&input.designId===`${input.slug}-default`&&slugPattern.test(input.slug);
   const content=input.content;
-  if(!uuidPattern.test(input.familyId)||!design)return {ok:false,message:'التصميم غير موجود.'};
+  if(!uuidPattern.test(input.familyId)||(!design&&!genericDesign))return {ok:false,message:'التصميم غير موجود.'};
   const textFields=[content?.nameAr,content?.nameEn,content?.categoryAr,content?.categoryEn,content?.descriptionAr,content?.descriptionEn];
   if(!content||textFields.some(value=>typeof value!=='string')
     ||[content.nameAr,content.nameEn,content.categoryAr,content.categoryEn].some(value=>!value.trim()||value.length>100)
@@ -70,17 +73,17 @@ export async function saveCatalogProduct(input:ProductInput):Promise<Result>{
         catalog_description_ar=$6,catalog_description_en=$7,catalog_images=$8,catalog_specs=$9::jsonb,catalog_specs_en=$12::jsonb,
         catalog_visible=$10,supports_landing_page=$11,catalog_sale_ends_at=$13::timestamptz,
         catalog_design_images=$14::jsonb,catalog_subcategory_ar=$15,catalog_subcategory_en=$16,
-        catalog_badge_ar=$17,catalog_badge_en=$18,catalog_compare_at_minor=$19,
+        catalog_badge_ar=$17,catalog_badge_en=$18,catalog_compare_at_minor=$19,has_nfc_qr=$20,
         state=case when $10 then case when exists(select 1 from public.product_skus s where s.product_family_id=$1 and s.state='ready') then 'ready'::public.product_state else 'preparing'::public.product_state end else 'paused'::public.product_state end
-        where id=$1 and catalog_deleted_at is null returning id`,
-        [input.id,input.nameAr.trim(),input.nameEn.trim(),input.categoryAr.trim(),input.categoryEn.trim(),input.descriptionAr.trim(),input.descriptionEn.trim(),input.images,JSON.stringify(input.specs),input.visible,input.supportsLandingPage,JSON.stringify(input.specsEn),input.saleEndsAt,JSON.stringify(input.designImages),input.subcategoryAr.trim(),input.subcategoryEn.trim(),input.badgeAr.trim(),input.badgeEn.trim(),input.compareAtMinor]);
-      if(!result.rowCount)return {ok:false,message:'المنتج غير موجود أو مؤرشف.'};
+        where id=$1 and catalog_deleted_at is null and (has_nfc_qr=$20 or not exists(select 1 from public.product_skus s where s.product_family_id=$1)) returning id`,
+        [input.id,input.nameAr.trim(),input.nameEn.trim(),input.categoryAr.trim(),input.categoryEn.trim(),input.descriptionAr.trim(),input.descriptionEn.trim(),input.images,JSON.stringify(input.specs),input.visible,input.supportsLandingPage,JSON.stringify(input.specsEn),input.saleEndsAt,JSON.stringify(input.designImages),input.subcategoryAr.trim(),input.subcategoryEn.trim(),input.badgeAr.trim(),input.badgeEn.trim(),input.compareAtMinor,input.hasNfcQr]);
+      if(!result.rowCount)return {ok:false,message:'المنتج غير موجود أو لا يمكن تغيير NFC بعد إنشاء أصناف له.'};
     }else{
-      await db.query(`insert into public.product_families(family_key,name_ar,name_en,state,sort_order,catalog_category_ar,catalog_category_en,
+      await db.query(`insert into public.product_families(family_key,name_ar,name_en,state,sort_order,catalog_category_ar,catalog_category_en,has_nfc_qr,
         catalog_description_ar,catalog_description_en,catalog_images,catalog_specs,catalog_specs_en,catalog_visible,supports_landing_page,catalog_sale_ends_at,
         catalog_design_images,catalog_subcategory_ar,catalog_subcategory_en,catalog_badge_ar,catalog_badge_en,catalog_compare_at_minor)
-        values($1,$2,$3,'planned',(select coalesce(max(sort_order),0)+1 from public.product_families),$4,$5,$6,$7,$8,$9::jsonb,$12::jsonb,$10,$11,$13::timestamptz,$14::jsonb,$15,$16,$17,$18,$19)`,
-        [input.slug,input.nameAr.trim(),input.nameEn.trim(),input.categoryAr.trim(),input.categoryEn.trim(),input.descriptionAr.trim(),input.descriptionEn.trim(),input.images,JSON.stringify(input.specs),input.visible,input.supportsLandingPage,JSON.stringify(input.specsEn),input.saleEndsAt,JSON.stringify(input.designImages),input.subcategoryAr.trim(),input.subcategoryEn.trim(),input.badgeAr.trim(),input.badgeEn.trim(),input.compareAtMinor]);
+        values($1,$2,$3,'planned',(select coalesce(max(sort_order),0)+1 from public.product_families),$4,$5,$6,$7,$8,$9,$10::jsonb,$13::jsonb,$11,$12,$14::timestamptz,$15::jsonb,$16,$17,$18,$19,$20)`,
+        [input.slug,input.nameAr.trim(),input.nameEn.trim(),input.categoryAr.trim(),input.categoryEn.trim(),input.hasNfcQr,input.descriptionAr.trim(),input.descriptionEn.trim(),input.images,JSON.stringify(input.specs),input.visible,input.supportsLandingPage,JSON.stringify(input.specsEn),input.saleEndsAt,JSON.stringify(input.designImages),input.subcategoryAr.trim(),input.subcategoryEn.trim(),input.badgeAr.trim(),input.badgeEn.trim(),input.compareAtMinor]);
     }
     refresh();return {ok:true,message:'تم حفظ المنتج.'};
   }catch(err){return {ok:false,message:(err as {code?:string}).code==='23505'?'اسم الرابط مستخدم بالفعل.':'تعذر حفظ المنتج.'};}

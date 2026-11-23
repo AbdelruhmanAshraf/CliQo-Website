@@ -49,8 +49,15 @@ export const catalogDesigns:Record<string,CatalogDesign[]>={
   ],
 };
 
-export function designsForProduct(product:{slug:string;designImages:Record<string,string[]>;designContent?:Record<string,CatalogDesignContent>}):CatalogDesign[]{
-  return (catalogDesigns[product.slug]??[]).map(design=>{
+export function designsForProduct(product:{slug:string;name?:string;nameEn?:string;category?:string;categoryEn?:string;description?:string;descriptionEn?:string;images?:string[];specs?:Record<string,string>;specsEn?:Record<string,string>;designImages:Record<string,string[]>;designContent?:Record<string,CatalogDesignContent>}):CatalogDesign[]{
+  const predefined=catalogDesigns[product.slug]??[];
+  const base=predefined.length?predefined:[{
+    id:`${product.slug}-default`,group:"default",nameAr:product.name||"منتج جديد",nameEn:product.nameEn||"New product",
+    categoryAr:product.category||"منتجات أخرى",categoryEn:product.categoryEn||"Other products",face:"default",variant:"Standard",
+    images:(product.images??[]).map((src,index)=>({src,label:index===0?"الصورة الرئيسية":`صورة ${index+1}`,side:null,kind:"photo" as const})),
+    descriptionAr:product.description,descriptionEn:product.descriptionEn,specsAr:product.specs,specsEn:product.specsEn,
+  }];
+  return base.map(design=>{
     const content=product.designContent?.[design.id];
     const currentImages=(images?:string[])=>images?.filter(src=>!isOldPrintProductImage(product.slug,src));
     const saved=currentImages(product.designImages?.[design.id]);
