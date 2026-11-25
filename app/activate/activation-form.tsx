@@ -3,6 +3,7 @@ import { useCopy } from '@/i18n/client';
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import styles from "./activate.module.css";
 import { createClient } from "@/lib/supabase/client";
 export function ActivationForm({ publicId }: { publicId: string | null }) {
   const tr = useCopy();
@@ -31,12 +32,12 @@ export function ActivationForm({ publicId }: { publicId: string | null }) {
       setMessage("كود التفعيل غير صحيح أو مستخدم أو تم إيقاف المحاولات مؤقتًا. تأكد من QR وكود التفعيل المرفق مع القطعة أو تواصل مع الدعم.");
     } finally { setBusy(false); }
   }
-  return <form className="login-form" data-testid="activation-form" data-hydrated={hydrated} onSubmit={submit}>
-    <fieldset className="activation-controls" disabled={!hydrated || busy}>
+  return <form className={styles.codeForm} data-testid="activation-form" data-hydrated={hydrated} onSubmit={submit}>
+    <fieldset disabled={!hydrated || busy}>
     <label htmlFor="activation">{tr("كود التفعيل الخاص المرفق مع القطعة")}</label>
     <input id="activation" type="text" pattern="(?:[0-9٠-٩۰-۹]{6}|[A-Fa-f0-9]{16}|[A-Fa-f0-9]{32})" autoComplete="off" required minLength={6} maxLength={32} value={token} onChange={(event) => setToken(event.target.value)} dir="ltr" />
-    <button className="button button-gold" type="submit">{busy ? tr("جاري التفعيل…") : tr("فعّل القطعة")}</button>
+    <button type="submit">{busy ? tr("جاري التفعيل…") : tr("فعّل القطعة")}</button>
     </fieldset>
-    <p role="status" aria-live="polite">{tr(message)}</p>
+    <p role="status" aria-live="polite" hidden={!message}>{tr(message)}</p>
   </form>;
 }

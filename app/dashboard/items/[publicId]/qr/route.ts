@@ -14,12 +14,14 @@ export async function GET(request: Request, context: RouteContext<"/dashboard/it
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims?.sub) redirect(`/login?next=${encodeURIComponent(`/dashboard/items/${publicId}`)}`);
+  const ownerId = claims?.claims?.sub;
+  if (!ownerId) redirect(`/login?next=${encodeURIComponent(`/dashboard/items/${publicId}`)}`);
 
-  // RLS limits this lookup to the signed-in item's owner.
+  // Staff can read the registry. Customer QR downloads require personal ownership.
   const { data: item, error } = await supabase.from("smart_items")
     .select("public_id,product_skus(options,product_families(family_key))")
-    .eq("public_id", publicId)
+    .eq("owner_user_id", ownerId).eq("public_id", publicId)
+    .is("archived_at", null)
     .maybeSingle();
   if (error || !item) notFound();
 

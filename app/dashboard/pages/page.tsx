@@ -1,10 +1,8 @@
 import { getCopy } from '@/i18n/server';
-import {LanguageSwitcher} from "@/app/language-switcher";
 import Link from "next/link";
 import { CliqoLogo } from "@/app/cliqo-logo";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/auth/signout-actions";
 import styles from "../dashboard.module.css";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +15,12 @@ export default async function LandingPagesDashboard() {
   }
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims?.sub) redirect("/login?next=%2Fdashboard%2Fpages");
+  const ownerId = claims?.claims?.sub;
+  if (!ownerId) redirect("/login?next=%2Fdashboard%2Fpages");
 
   const [pagesResult, itemsResult, pageAnalyticsResult] = await Promise.all([
-    supabase.from("merchant_pages").select("id,display_name,is_published,updated_at" ).order("updated_at", { ascending: false }),
-    supabase.from("smart_items").select("id,landing_page_id,internal_name,state"),
+    supabase.from("merchant_pages").select("id,display_name,is_published,updated_at").eq("owner_user_id", ownerId).order("updated_at", { ascending: false }),
+    supabase.from("smart_items").select("id,landing_page_id,internal_name,state").eq("owner_user_id", ownerId).is("archived_at", null),
     supabase.rpc("get_my_page_analytics"),
   ]);
   const pages = pagesResult.data ?? [];
@@ -35,12 +34,11 @@ export default async function LandingPagesDashboard() {
     for (const link of pageLinks ?? []) linksByPage.set(link.page_id, (linksByPage.get(link.page_id) ?? 0) + 1);
   }
 
-  return <main className={`${styles.page} dashboard-page`} >
-    <header className={styles.header}><Link className="brand" href="/" aria-label={tr("CliQo الرئيسية")}><CliqoLogo width={124} /></Link><nav className={styles.nav}><Link href="/dashboard">{tr("قطعك")}</Link><Link href="/dashboard/pages">{tr("صفحات الهبوط")}</Link><Link href="/dashboard/analytics">{tr("الإحصائيات")}</Link><Link href="/guides">{tr("تعليمات NFC")}</Link></nav><form action={signOut}><button className="signout-button" type="submit">{tr("تسجيل الخروج")}</button></form><LanguageSwitcher/></header>
+  return <main className={styles.page}>
     <section className={styles.content}>
       <div className={styles.pageListHeading}><div><p className={styles.eyebrow}>{tr("مساحة العميل")}</p><h1>{tr("صفحات الهبوط")}</h1><p className={styles.intro}>{tr("أنشئ صفحة، عدّل الروابط، ثم اربطها بقطعة واحدة أو أكثر.")}</p></div><Link className={styles.createPageButton} href="/dashboard/pages/new">{tr("+ صفحة جديدة")}</Link></div>
-      {(pagesResult.error || itemsResult.error || pageAnalyticsResult.error) && <p className={styles.note}>{tr("تعذر تحميل بعض البيانات. تأكد من تحديث قاعدة البيانات المحلية.")}</p>}
-      {pages.length === 0 ? <div className={styles.emptyPages}><h2>{tr("ابدأ بصفحتك الأولى")}</h2><p>{tr("أضف اسم نشاطك وروابطك، وبعدها اربط الصفحة بقطعة تدعم Landing Page.")}</p><Link href="/dashboard/pages/new">{tr("إنشاء صفحة هبوط")}</Link></div> : <div className={styles.pageCards}>{pages.map((page) => {
+      {(pagesResult.error || itemsResult.error || pageAnalyticsResult.error) && <p className={styles.note}>{tr("تعذر تحميل بعض الصفحات. جرّب تحديث الصفحة.")}</p>}
+      {pages.length === 0 && !pagesResult.error ? <div className={styles.emptyPages}><h2>{tr("ابدأ بصفحتك الأولى")}</h2><p>{tr("أضف اسم نشاطك وروابطك، وبعدها اربط الصفحة بقطعة تدعم Landing Page.")}</p><Link href="/dashboard/pages/new">{tr("إنشاء صفحة هبوط")}</Link></div> : <div className={styles.pageCards}>{pages.map((page) => {
         const linkedItems = items.filter((item) => item.landing_page_id === page.id);
         const totals = pageAnalytics.get(page.id) ?? { opens: 0, clicks: 0 };
         return <article className={styles.pageCard} key={page.id}>

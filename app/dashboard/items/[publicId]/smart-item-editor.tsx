@@ -14,9 +14,9 @@ type Item = {
 };
 
 export function SmartItemEditor({
-  item, payment, supportsPage, requiresPage = false, pages, analytics,
+  item, configured, payment, supportsPage, requiresPage = false, pages, analytics,
 }: {
-  item: Item; payment: boolean; supportsPage: boolean; requiresPage?: boolean;
+  item: Item; configured: boolean; payment: boolean; supportsPage: boolean; requiresPage?: boolean;
   pages: PageChoice[]; analytics: { opens: number; clicks: number };
 }) {
   const tr = useCopy();
@@ -99,6 +99,6 @@ export function SmartItemEditor({
       {message && <p className="customer-item-message" role="status">{tr(message)}</p>}
       </fieldset>
     </form>
-    <div className="customer-item-pause"><div><strong>{state === "disabled" ? tr("الرابط متوقف") : tr("الرابط نشط")}</strong><small>{tr("الإيقاف مؤقت ويمكنك إعادة تشغيله في أي وقت.")}</small></div><button type="button" className="signout-button" disabled={!ready || pending} onClick={togglePause}>{state === "disabled" ? tr("إعادة التشغيل") : tr("إيقاف مؤقت")}</button></div>
+    <div className="customer-item-pause"><div><strong>{state === "disabled" ? tr("الرابط متوقف") : configured ? tr("الرابط نشط") : tr("تحتاج تجهيز")}</strong><small>{tr("الإيقاف مؤقت ويمكنك إعادة تشغيله في أي وقت.")}</small></div><button type="button" className="signout-button" disabled={!ready || pending} onClick={togglePause}>{state === "disabled" ? tr("إعادة التشغيل") : tr("إيقاف مؤقت")}</button></div>
   </div>;
 }
